@@ -19,7 +19,7 @@ export default async function DashboardRootLayout({
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, phone, role, is_phone_verified")
+    .select("full_name, phone, role, is_phone_verified, nida_verification_status")
     .eq("id", session.userId)
     .single()
 
@@ -33,6 +33,7 @@ export default async function DashboardRootLayout({
         rawPhone: profile?.phone ?? session.phone,
         role: profile?.role ?? session.role,
         isPhoneVerified: profile?.is_phone_verified ?? session.isPhoneVerified,
+        nidaStatus: (profile?.nida_verification_status as string | undefined) ?? "unverified",
       }}
     >
       {children}

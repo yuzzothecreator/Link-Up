@@ -2,10 +2,40 @@ import { requireOnboarded } from "@/lib/auth/guards"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { ProfileForm } from "./profile-form"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Clock } from "lucide-react"
+import { CheckCircle2, Clock, XCircle } from "lucide-react"
+import { documentStatusLabel } from "@/components/dashboard/verification-status-banner"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Profile · Link-Up" }
+
+function DocRow({ label, status }: { label: string; status: string | undefined }) {
+  const resolved = status ?? "missing"
+  const Icon =
+    resolved === "approved" ? CheckCircle2 : resolved === "rejected" ? XCircle : Clock
+  const iconClass =
+    resolved === "approved"
+      ? "text-emerald-500"
+      : resolved === "rejected"
+        ? "text-destructive"
+        : "text-amber-500"
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border p-3">
+      <div className="flex items-center gap-3">
+        <Icon className={`h-5 w-5 ${iconClass}`} />
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <Badge
+        variant={
+          resolved === "approved" ? "outline" : resolved === "rejected" ? "destructive" : "secondary"
+        }
+        className="capitalize"
+      >
+        {documentStatusLabel(status)}
+      </Badge>
+    </div>
+  )
+}
 
 export default async function ProfilePage() {
   const session = await requireOnboarded()
@@ -17,8 +47,10 @@ export default async function ProfilePage() {
   ])
 
   const docs = documents ?? []
-  const hasNationalId = docs.some((d) => d.type === "national_id")
-  const hasBusinessLicense = docs.some((d) => d.type === "business_license")
+  const nationalId = docs.find((d) => d.type === "national_id")
+  const businessLicense = docs.find((d) => d.type === "business_license")
+  const nidaStatus =
+    (profile?.nida_verification_status as string | undefined)?.replace(/_/g, " ") ?? "unverified"
 
   return (
     <div className="space-y-6">
@@ -28,7 +60,6 @@ export default async function ProfilePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Profile Settings */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-card-foreground">General Information</h2>
           <div className="mt-6">
@@ -42,7 +73,6 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Account Details & Documents */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-card-foreground">Account Details</h2>
@@ -57,7 +87,9 @@ export default async function ProfilePage() {
               </div>
               <div className="flex justify-between border-b border-border pb-4">
                 <span className="text-sm text-muted-foreground">Mobile Money Provider</span>
-                <span className="text-sm font-medium capitalize">{profile?.mobile_money_provider ?? "Not set"}</span>
+                <span className="text-sm font-medium capitalize">
+                  {profile?.mobile_money_provider ?? "Not set"}
+                </span>
               </div>
               <div className="flex justify-between border-b border-border pb-4">
                 <span className="text-sm text-muted-foreground">Phone verified</span>
@@ -74,8 +106,7 @@ export default async function ProfilePage() {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">NIDA status</span>
                 <Badge variant="outline" className="capitalize">
-                  {(profile?.nida_verification_status as string | undefined)?.replace(/_/g, " ") ??
-                    "unverified"}
+                  {nidaStatus}
                 </Badge>
               </div>
             </div>
@@ -83,36 +114,13 @@ export default async function ProfilePage() {
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-card-foreground">Document Status</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Uploaded documents that verify your identity.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Admin review status for your uploaded identity documents.
+            </p>
 
             <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                <div className="flex items-center gap-3">
-                  {hasNationalId ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  ) : (
-                    <Clock className="h-5 w-5 text-amber-500" />
-                  )}
-                  <span className="text-sm font-medium">National ID (NIDA)</span>
-                </div>
-                <Badge variant={hasNationalId ? "outline" : "secondary"}>
-                  {hasNationalId ? "Uploaded" : "Pending"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                <div className="flex items-center gap-3">
-                  {hasBusinessLicense ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  ) : (
-                    <Clock className="h-5 w-5 text-amber-500" />
-                  )}
-                  <span className="text-sm font-medium">Business License</span>
-                </div>
-                <Badge variant={hasBusinessLicense ? "outline" : "secondary"}>
-                  {hasBusinessLicense ? "Uploaded" : "Pending"}
-                </Badge>
-              </div>
+              <DocRow label="National ID (NIDA)" status={nationalId?.status} />
+              <DocRow label="Business License" status={businessLicense?.status} />
             </div>
           </div>
         </div>

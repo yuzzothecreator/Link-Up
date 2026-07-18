@@ -38,6 +38,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { logoutAction } from "@/lib/actions/auth"
 import { PhoneVerificationBanner } from "./phone-verification-banner"
+import { VerificationStatusBanner } from "./verification-status-banner"
 
 const mainNav = [
   { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -60,7 +61,14 @@ export function DashboardLayout({
   user,
 }: {
   children: React.ReactNode
-  user: { name: string; phone: string; rawPhone: string; role: string; isPhoneVerified: boolean }
+  user: {
+    name: string
+    phone: string
+    rawPhone: string
+    role: string
+    isPhoneVerified: boolean
+    nidaStatus: string
+  }
 }) {
   const pathname = usePathname()
 
@@ -217,6 +225,12 @@ export function DashboardLayout({
         </header>
         <div className="flex-1 p-4 sm:p-6">
           {!user.isPhoneVerified && <PhoneVerificationBanner phone={user.rawPhone} />}
+          {user.isPhoneVerified && user.nidaStatus !== "verified" && (
+            <VerificationStatusBanner
+              isPhoneVerified={user.isPhoneVerified}
+              nidaStatus={user.nidaStatus}
+            />
+          )}
           {children}
         </div>
       </SidebarInset>

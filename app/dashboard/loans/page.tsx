@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { LoanApplicationForm } from "./loan-form"
 import { AcceptOfferButton, WithdrawApplicationButton } from "./marketplace-actions"
+import { VerificationStatusBanner } from "@/components/dashboard/verification-status-banner"
 import { Landmark } from "lucide-react"
 import type { Metadata } from "next"
 
@@ -14,7 +15,7 @@ export default async function LoansPage() {
   const session = await requireOnboarded()
   const admin = createAdminClient()
 
-  const [{ data: loans }, { data: productRows }, { data: applicationRows }] =
+  const [{ data: loans }, { data: productRows }, { data: applicationRows }, { data: profile }] =
     await Promise.all([
       admin
         .from("loans")
@@ -44,7 +45,15 @@ export default async function LoansPage() {
         `)
         .eq("borrower_id", session.userId)
         .order("created_at", { ascending: false }),
+      admin
+        .from("profiles")
+        .select("is_phone_verified, nida_verification_status")
+        .eq("id", session.userId)
+        .single(),
     ])
+
+  const canApply =
+    Boolean(profile?.is_phone_verified) && profile?.nida_verification_status === "verified"
 
   const products = (productRows ?? [])
     .filter((row) => {
@@ -81,6 +90,11 @@ export default async function LoansPage() {
         <p className="mt-1 text-sm text-muted-foreground">Apply for new loans and manage existing ones.</p>
       </div>
 
+      <VerificationStatusBanner
+        isPhoneVerified={Boolean(profile?.is_phone_verified)}
+        nidaStatus={profile?.nida_verification_status as string | undefined}
+      />
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Apply for Loan */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -89,7 +103,12 @@ export default async function LoansPage() {
             Compare products from banks, telecoms and microfinance providers.
           </p>
           <div className="mt-6">
-            {products.length ? (
+            {!canApply ? (
+              <p className="text-sm text-muted-foreground">
+                Loan applications unlock after phone verification and admin NIDA approval. Watch
+                Notifications for the approval SMS.
+              </p>
+            ) : products.length ? (
               <LoanApplicationForm products={products} />
             ) : (
               <p className="text-sm text-muted-foreground">

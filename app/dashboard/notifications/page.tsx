@@ -40,7 +40,7 @@ export default async function NotificationsPage() {
                 <div className="mt-1">
                   {n.status === "unread" ? (
                     <AlertCircle className="h-5 w-5 text-primary" />
-                  ) : n.type === "payment_confirmation" ? (
+                  ) : n.type === "payment_confirmation" || n.type === "kyc_approved" || n.type === "loan_approved" ? (
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                   ) : (
                     <MessageSquare className="h-5 w-5 text-muted-foreground" />

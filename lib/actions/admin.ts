@@ -4,9 +4,17 @@ import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireRole } from "@/lib/auth/guards"
 import { recalculateTrustScore } from "@/lib/trust/engine"
-import { notify } from "@/lib/notifications"
+import { notify, notifyVerificationOutcome } from "@/lib/notifications"
 import type { ActionState } from "@/lib/actions/auth"
 import { revalidatePath } from "next/cache"
+
+function revalidateCustomerVerificationPaths() {
+  revalidatePath("/dashboard")
+  revalidatePath("/dashboard/profile")
+  revalidatePath("/dashboard/loans")
+  revalidatePath("/dashboard/notifications")
+  revalidatePath("/admin/kyc")
+}
 
 async function requireAdmin() {
   return requireRole("admin")
@@ -53,12 +61,15 @@ export async function approveLoanAction(loanId: string): Promise<ActionState> {
   const phone = loan.profiles?.phone
   if (phone) {
     await notify({
+      userId: loan.borrower_id,
       phone,
       type: "loan_approved",
       message: `Your loan of TZS ${Number(loan.amount).toLocaleString()} has been approved and disbursed to your wallet.`,
     })
   }
 
+  revalidatePath("/dashboard/loans")
+  revalidatePath("/dashboard/notifications")
   return { success: true, message: "Loan approved and funds disbursed." }
 }
 
@@ -71,7 +82,7 @@ export async function rejectLoanAction(loanId: string, reason: string): Promise<
     .update({ status: "rejected" })
     .eq("id", loanId)
     .eq("status", "pending")
-    .select("profiles:borrower_id(phone)")
+    .select("borrower_id, profiles:borrower_id(phone)")
     .single()
 
   if (error || !loan) return { error: "Failed to reject loan." }
@@ -80,12 +91,15 @@ export async function rejectLoanAction(loanId: string, reason: string): Promise<
   const phone = loan.profiles?.phone
   if (phone) {
     await notify({
+      userId: loan.borrower_id,
       phone,
       type: "loan_rejected",
       message: `Your loan application was rejected. Reason: ${reason}. Please improve your Trust Score and try again.`,
     })
   }
 
+  revalidatePath("/dashboard/loans")
+  revalidatePath("/dashboard/notifications")
   return { success: true, message: "Loan rejected." }
 }
 
@@ -102,7 +116,8 @@ export async function approveKycAction(documentId: string): Promise<ActionState>
 
   if (error || !doc) return { error: "Failed to approve document." }
 
-  if (doc.type === "national_id") {
+  const isNationalId = doc.type === "national_id"
+  if (isNationalId) {
     await admin
       .from("profiles")
       .update({
@@ -114,7 +129,17 @@ export async function approveKycAction(documentId: string): Promise<ActionState>
 
   await recalculateTrustScore(doc.user_id)
 
-  return { success: true, message: "Document approved." }
+  const docLabel = doc.type.replace(/_/g, " ")
+  await notifyVerificationOutcome({
+    userId: doc.user_id,
+    approved: true,
+    message: isNationalId
+      ? "Your NIDA identity has been approved. You can now apply for loans on Link-Up."
+      : `Your ${docLabel} has been approved by Link-Up.`,
+  })
+
+  revalidateCustomerVerificationPaths()
+  return { success: true, message: "Document approved. Customer notified." }
 }
 
 export async function rejectKycAction(documentId: string): Promise<ActionState> {
@@ -128,9 +153,9 @@ export async function rejectKycAction(documentId: string): Promise<ActionState> 
     .select("user_id, type")
     .single()
 
-  if (error) return { error: "Failed to reject document." }
+  if (error || !doc) return { error: "Failed to reject document." }
 
-  if (doc?.type === "national_id") {
+  if (doc.type === "national_id") {
     await admin
       .from("profiles")
       .update({ nida_verification_status: "rejected" })
@@ -138,7 +163,18 @@ export async function rejectKycAction(documentId: string): Promise<ActionState> 
     await recalculateTrustScore(doc.user_id)
   }
 
-  return { success: true, message: "Document rejected." }
+  const docLabel = doc.type.replace(/_/g, " ")
+  await notifyVerificationOutcome({
+    userId: doc.user_id,
+    approved: false,
+    message:
+      doc.type === "national_id"
+        ? "Your NIDA verification was not approved. Please update your details and resubmit."
+        : `Your ${docLabel} was rejected. Please upload a clearer copy and try again.`,
+  })
+
+  revalidateCustomerVerificationPaths()
+  return { success: true, message: "Document rejected. Customer notified." }
 }
 
 /** Manually confirm a structurally-valid NIDA after review. */
@@ -157,8 +193,13 @@ export async function approveNidaAction(userId: string): Promise<ActionState> {
   if (error) return { error: "Failed to verify NIDA." }
 
   await recalculateTrustScore(userId)
-  revalidatePath("/admin/kyc")
-  return { success: true, message: "NIDA marked as verified." }
+  await notifyVerificationOutcome({
+    userId,
+    approved: true,
+    message: "Your NIDA identity has been verified. You can now apply for loans on Link-Up.",
+  })
+  revalidateCustomerVerificationPaths()
+  return { success: true, message: "NIDA verified. Customer notified." }
 }
 
 export async function rejectNidaAction(userId: string): Promise<ActionState> {
@@ -173,8 +214,14 @@ export async function rejectNidaAction(userId: string): Promise<ActionState> {
   if (error) return { error: "Failed to reject NIDA." }
 
   await recalculateTrustScore(userId)
-  revalidatePath("/admin/kyc")
-  return { success: true, message: "NIDA rejected." }
+  await notifyVerificationOutcome({
+    userId,
+    approved: false,
+    message:
+      "Your NIDA verification was not approved. Please update your details on Profile and resubmit for review.",
+  })
+  revalidateCustomerVerificationPaths()
+  return { success: true, message: "NIDA rejected. Customer notified." }
 }
 
 export async function verifyAssetAction(assetId: string, userId: string) {
