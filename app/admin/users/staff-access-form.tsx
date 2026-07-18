@@ -20,7 +20,8 @@ export function StaffAccessForm() {
       <div>
         <h2 className="text-lg font-semibold">Grant staff access</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Use a real phone number. Staff log in with Briq SMS OTP — there is no shared password.
+          Create or promote an account by phone. The user sets a password through the SMS-secured
+          password reset page.
         </p>
       </div>
 

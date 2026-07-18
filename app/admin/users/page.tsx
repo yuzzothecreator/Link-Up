@@ -3,17 +3,20 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { Badge } from "@/components/ui/badge"
 import { maskPhone } from "@/lib/format"
 import { StaffAccessForm } from "./staff-access-form"
+import { RoleAssignmentForm } from "./role-assignment-form"
+import type { Role } from "@/lib/auth/session"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Users · Admin" }
 
 export default async function AdminUsersPage() {
-  await requireRole("admin")
+  const session = await requireRole("admin")
   const admin = createAdminClient()
 
-  const { data: users } = await admin
-    .from("profiles")
-    .select(`
+  const [{ data: users }, { data: organizations }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select(`
       id,
       full_name,
       phone,
@@ -21,15 +24,22 @@ export default async function AdminUsersPage() {
       created_at,
       trust_scores(score)
     `)
-    .order("created_at", { ascending: false })
-    .limit(50)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    admin
+      .from("provider_organizations")
+      .select("id, name")
+      .eq("status", "active")
+      .order("name"),
+  ])
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Users</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage platform users. Privileged access is phone + SMS OTP only.
+          Assign borrower, lender, or administrator access. Role changes take effect after the
+          user signs in again.
         </p>
       </div>
 
@@ -45,6 +55,7 @@ export default async function AdminUsersPage() {
                 <th className="px-6 py-4 font-medium">Role</th>
                 <th className="px-6 py-4 font-medium">Trust Score</th>
                 <th className="px-6 py-4 font-medium">Joined</th>
+                <th className="px-6 py-4 font-medium">Assign Access</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -81,6 +92,14 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <RoleAssignmentForm
+                        userId={user.id}
+                        currentRole={user.role as Role}
+                        organizations={organizations ?? []}
+                        disabled={user.id === session.userId}
+                      />
                     </td>
                   </tr>
                 )
