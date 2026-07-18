@@ -10,13 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { CheckCircle2, Upload } from "lucide-react"
 
 const regions = [
@@ -104,16 +97,20 @@ export function IdentityVerificationForm({
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="gender">Gender *</Label>
-          <Select name="gender" required defaultValue={initial.gender || undefined}>
-            <SelectTrigger id="gender">
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            id="gender"
+            name="gender"
+            required
+            defaultValue={initial.gender || ""}
+            className="h-11 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="" disabled>
+              Select gender
+            </option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
         </div>
       </div>
 
@@ -136,18 +133,22 @@ export function IdentityVerificationForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="region">Region *</Label>
-          <Select name="region" required defaultValue={initial.region || undefined}>
-            <SelectTrigger id="region">
-              <SelectValue placeholder="Select region" />
-            </SelectTrigger>
-            <SelectContent>
-              {regions.map((r) => (
-                <SelectItem key={r} value={r.toLowerCase()}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            id="region"
+            name="region"
+            required
+            defaultValue={initial.region || ""}
+            className="h-11 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="" disabled>
+              Select region
+            </option>
+            {regions.map((r) => (
+              <option key={r} value={r.toLowerCase()}>
+                {r}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="district">District</Label>

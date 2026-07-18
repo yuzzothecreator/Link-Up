@@ -23,11 +23,20 @@ export async function submitIdentityVerificationAction(
   const session = await requireOnboarded()
   const admin = createAdminClient()
 
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("profiles")
-    .select("nida_verification_status, full_name")
+    .select("nida_verification_status, full_name, nida_number")
     .eq("id", session.userId)
-    .single()
+    .maybeSingle()
+
+  // Missing NIDA columns → migration 002 not applied yet.
+  if (existingError?.message?.includes("nida_")) {
+    console.error("[Verification] Missing NIDA columns:", existingError.message)
+    return {
+      error:
+        "Database is missing NIDA columns. In Supabase → SQL Editor, run the file migrations/002_nida_and_statements.sql, then try again.",
+    }
+  }
 
   if (existing?.nida_verification_status === "verified") {
     return { error: "Your NIDA is already verified. No further action is needed." }
@@ -40,14 +49,16 @@ export async function submitIdentityVerificationAction(
     }
   }
 
-  const dateOfBirth = String(formData.get("dateOfBirth") ?? "")
-  const gender = String(formData.get("gender") ?? "")
-  const nidaNumber = String(formData.get("nidaNumber") ?? "")
-  const region = String(formData.get("region") ?? "")
-  const district = String(formData.get("district") ?? "")
+  const dateOfBirth = String(formData.get("dateOfBirth") ?? "").trim()
+  const gender = String(formData.get("gender") ?? "").trim()
+  const nidaNumber = String(formData.get("nidaNumber") ?? "").trim()
+  const region = String(formData.get("region") ?? "").trim()
+  const district = String(formData.get("district") ?? "").trim()
 
   if (!dateOfBirth || !gender || !nidaNumber || !region) {
-    return { error: "Please fill in all required fields." }
+    return {
+      error: "Please fill in all required fields (date of birth, gender, NIDA number, and region).",
+    }
   }
 
   const nida = await verifyNidaIdentity({
@@ -67,8 +78,25 @@ export async function submitIdentityVerificationAction(
     .neq("id", session.userId)
     .maybeSingle()
 
+  if (takenError && !takenError.message?.includes("nida_normalized")) {
+    console.error("[Verification] NIDA uniqueness check failed:", takenError)
+  }
+
   if (!takenError && taken) {
     return { error: "This NIDA number is already registered to another account." }
+  }
+
+  // Fallback uniqueness when normalized column is missing
+  if (takenError?.message?.includes("nida_normalized")) {
+    const { data: takenRaw } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("nida_number", nida.formatted ?? nida.normalized)
+      .neq("id", session.userId)
+      .maybeSingle()
+    if (takenRaw) {
+      return { error: "This NIDA number is already registered to another account." }
+    }
   }
 
   const updates: Record<string, unknown> = {
@@ -84,7 +112,46 @@ export async function submitIdentityVerificationAction(
   }
 
   const { error } = await admin.from("profiles").update(updates).eq("id", session.userId)
-  if (error) return { error: "Could not save your identity details. Try again." }
+
+  if (error) {
+    console.error("[Verification] Profile update failed:", error)
+
+    if (
+      error.message?.includes("nida_") ||
+      error.code === "PGRST204" ||
+      error.code === "42703"
+    ) {
+      // Try minimal save so the user isn't stuck, then ask them to migrate.
+      const { error: fallbackError } = await admin
+        .from("profiles")
+        .update({
+          date_of_birth: dateOfBirth,
+          gender,
+          nida_number: nida.formatted ?? nida.normalized,
+          region,
+          district: district || null,
+        })
+        .eq("id", session.userId)
+
+      if (fallbackError) {
+        return {
+          error:
+            "Could not save identity details. In Supabase → SQL Editor, run migrations/002_nida_and_statements.sql, then try again.",
+        }
+      }
+
+      return {
+        error:
+          "Basic details saved, but NIDA status columns are missing. Run migrations/002_nida_and_statements.sql in Supabase SQL Editor, then submit again so loans can unlock.",
+      }
+    }
+
+    if (error.code === "23505" || error.message?.toLowerCase().includes("duplicate")) {
+      return { error: "This NIDA number is already registered to another account." }
+    }
+
+    return { error: `Could not save your identity details: ${error.message}` }
+  }
 
   await recalculateTrustScore(session.userId)
   revalidateVerification()
