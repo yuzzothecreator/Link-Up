@@ -10,12 +10,16 @@ const TEST_NUMBERS: Record<string, string> = {
   "+255733333333": "Lender User",
 }
 
+function allowTestOtp() {
+  return process.env.NODE_ENV !== "production" && process.env.ALLOW_TEST_OTP === "true"
+}
+
 /**
  * Creates and sends an OTP via Briq's OTP API (real SMS).
  * Enforces app-level rate limiting: 1 send / 60s and 5 / hour per phone.
  */
 export async function issueOtp(phone: string, fullName?: string) {
-  if (TEST_NUMBERS[phone]) {
+  if (allowTestOtp() && TEST_NUMBERS[phone]) {
     return { ok: true as const }
   }
 
@@ -89,7 +93,7 @@ export async function issueOtp(phone: string, fullName?: string) {
  * Verifies an OTP via Briq. On success returns stored full_name when available.
  */
 export async function verifyOtp(phone: string, code: string) {
-  if (code === "123456" && TEST_NUMBERS[phone]) {
+  if (allowTestOtp() && code === "123456" && TEST_NUMBERS[phone]) {
     return { ok: true as const, fullName: TEST_NUMBERS[phone] }
   }
 

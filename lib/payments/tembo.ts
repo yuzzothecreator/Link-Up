@@ -106,7 +106,10 @@ export async function initiatePayment(
   const phoneNumber = params.phone.replace(/^\+/, "")
   const amount = Math.round(params.amount)
   const channel = resolveChannel(params.phone, params.provider)
-  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/payments/webhook`
+  const callbackToken = process.env.TEMBO_WEBHOOK_SECRET
+  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/payments/webhook${
+    callbackToken ? `?token=${encodeURIComponent(callbackToken)}` : ""
+  }`
 
   try {
     const res = await fetch(`${TEMBO_BASE_URL}/collection`, {

@@ -84,6 +84,42 @@ export async function importStatementAction(
     return { error: "Could not save imported transactions. Try again." }
   }
 
+  // Register the source as a customer-controlled financial connection. This
+  // stores no credentials; API-based connections can be added per contracted provider.
+  const connectionType =
+    parsed.provider === "generic_csv" ? "bank" : "mobile_money"
+  const { data: existingConnection } = await admin
+    .from("financial_connections")
+    .select("id")
+    .eq("user_id", session.userId)
+    .eq("provider", parsed.provider)
+    .eq("access_mode", "statement_upload")
+    .maybeSingle()
+
+  if (existingConnection) {
+    await admin
+      .from("financial_connections")
+      .update({
+        status: "active",
+        last_synced_at: new Date().toISOString(),
+        consent_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .eq("id", existingConnection.id)
+      .eq("user_id", session.userId)
+  } else {
+    // Non-fatal until migration 003 is installed.
+    await admin.from("financial_connections").insert({
+      user_id: session.userId,
+      connection_type: connectionType,
+      provider: parsed.provider,
+      access_mode: "statement_upload",
+      status: "active",
+      last_synced_at: new Date().toISOString(),
+      consent_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      metadata: { source_file: file.name },
+    })
+  }
+
   await recalculateTrustScore(session.userId)
 
   return {

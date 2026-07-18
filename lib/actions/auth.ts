@@ -13,9 +13,12 @@ export interface ActionState {
   message?: string
   pending?: boolean
   reference?: string
+  otpRequired?: boolean
+  phone?: string
+  fullName?: string
 }
 
-/** Register: validate, ensure phone is new, create profile, log in immediately. */
+/** Register only after ownership of the phone is proven by OTP. */
 export async function registerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = registerSchema.safeParse({
     fullName: formData.get("fullName"),
@@ -25,47 +28,79 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" }
   }
   const { fullName, phone } = parsed.data
+  const code = String(formData.get("code") ?? "")
 
   const admin = createAdminClient()
-  const { data: existing } = await admin.from("profiles").select("id").eq("phone", phone).maybeSingle()
-  if (existing) {
+  const { data: existing } = await admin
+    .from("profiles")
+    .select("id, phone, role, is_phone_verified, onboarding_complete")
+    .eq("phone", phone)
+    .maybeSingle()
+
+  if (existing?.is_phone_verified && !code) {
     return { error: "An account with this phone already exists. Please log in." }
   }
 
-  // Create profile immediately, unverified
-  const { data: created, error } = await admin
-    .from("profiles")
-    .insert({ phone, full_name: fullName, role: "borrower", is_phone_verified: false })
-    .select("id, phone, role, is_phone_verified, onboarding_complete, full_name")
-    .single()
+  if (!code) {
+    let profile = existing
+    if (!profile) {
+      const { data: created, error } = await admin
+        .from("profiles")
+        .insert({ phone, full_name: fullName, role: "borrower", is_phone_verified: false })
+        .select("id, phone, role, is_phone_verified, onboarding_complete")
+        .single()
+      if (error || !created) {
+        console.error("Profile creation error:", error)
+        return { error: "Could not create your account. Try again." }
+      }
+      profile = created
+      await admin.from("wallets").insert({ user_id: created.id, balance: 0 })
+      await recalculateTrustScore(created.id)
+    }
 
-  if (error || !created) {
-    console.error("Profile creation error:", error)
-    return { error: "Could not create your account. Try again." }
+    const otp = await issueOtp(phone, fullName)
+    if (!otp.ok) return { error: otp.error }
+    return {
+      success: true,
+      otpRequired: true,
+      phone,
+      fullName,
+      message: "Enter the verification code sent to your phone.",
+    }
   }
 
-  // Provision a wallet + initial trust score for the new user.
-  await admin.from("wallets").insert({ user_id: created.id, balance: 0 })
-  await recalculateTrustScore(created.id)
+  if (!existing) return { error: "Registration session expired. Start again." }
+  if (existing.role !== "borrower") {
+    return { error: "This account must use the secure login page." }
+  }
+  const verified = await verifyOtp(phone, code)
+  if (!verified.ok) {
+    return { error: verified.error, otpRequired: true, phone, fullName }
+  }
+
+  await admin
+    .from("profiles")
+    .update({ is_phone_verified: true, full_name: fullName })
+    .eq("id", existing.id)
 
   await createSession({
-    userId: created.id,
-    phone: created.phone,
-    role: created.role as Role,
-    isPhoneVerified: created.is_phone_verified,
-    onboardingComplete: created.onboarding_complete,
+    userId: existing.id,
+    phone: existing.phone,
+    role: existing.role as Role,
+    isPhoneVerified: true,
+    onboardingComplete: existing.onboarding_complete,
   })
-
-  redirect(created.onboarding_complete ? "/dashboard" : "/onboarding")
+  redirect(existing.onboarding_complete ? "/dashboard" : "/onboarding")
 }
 
-/** Login: validate, ensure phone exists, log in immediately. */
+/** Login requires an OTP; knowing a phone number is never sufficient. */
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse({ phone: formData.get("phone") })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid phone number" }
   }
   const { phone } = parsed.data
+  const code = String(formData.get("code") ?? "")
 
   const admin = createAdminClient()
   const { data: existing } = await admin
@@ -78,11 +113,28 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     return { error: "No account found for this number. Please register first." }
   }
 
+  if (!code) {
+    const otp = await issueOtp(phone)
+    if (!otp.ok) return { error: otp.error }
+    return {
+      success: true,
+      otpRequired: true,
+      phone,
+      message: "Enter the verification code sent to your phone.",
+    }
+  }
+
+  const verified = await verifyOtp(phone, code)
+  if (!verified.ok) {
+    return { error: verified.error, otpRequired: true, phone }
+  }
+
+  await admin.from("profiles").update({ is_phone_verified: true }).eq("id", existing.id)
   await createSession({
     userId: existing.id,
     phone: existing.phone,
     role: existing.role as Role,
-    isPhoneVerified: existing.is_phone_verified,
+    isPhoneVerified: true,
     onboardingComplete: existing.onboarding_complete,
   })
 

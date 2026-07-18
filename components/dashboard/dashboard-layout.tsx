@@ -130,6 +130,24 @@ export function DashboardLayout({
             </SidebarGroup>
           )}
 
+          {user.role === "lender" && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Institution</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Provider Portal">
+                      <Link href="/lender">
+                        <Landmark />
+                        <span>Provider Portal</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
           <SidebarGroup>
             <SidebarGroupLabel>Account</SidebarGroupLabel>
             <SidebarGroupContent>

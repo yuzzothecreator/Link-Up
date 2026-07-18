@@ -2,16 +2,14 @@
 
 import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { getSession } from "@/lib/auth/session"
+import { requireRole } from "@/lib/auth/guards"
 import { recalculateTrustScore } from "@/lib/trust/engine"
 import { notify } from "@/lib/notifications"
 import type { ActionState } from "@/lib/actions/auth"
 import { revalidatePath } from "next/cache"
 
 async function requireAdmin() {
-  const session = await getSession()
-  if (!session || session.role !== "admin") redirect("/dashboard")
-  return session
+  return requireRole("admin")
 }
 
 export async function approveLoanAction(loanId: string): Promise<ActionState> {
@@ -22,6 +20,7 @@ export async function approveLoanAction(loanId: string): Promise<ActionState> {
     .from("loans")
     .update({ status: "active" })
     .eq("id", loanId)
+    .eq("status", "pending")
     .select("borrower_id, amount, profiles:borrower_id(phone)")
     .single()
 
@@ -71,6 +70,7 @@ export async function rejectLoanAction(loanId: string, reason: string): Promise<
     .from("loans")
     .update({ status: "rejected" })
     .eq("id", loanId)
+    .eq("status", "pending")
     .select("profiles:borrower_id(phone)")
     .single()
 

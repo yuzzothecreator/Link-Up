@@ -34,7 +34,15 @@ export function RegisterForm() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="fullName">Full name</Label>
-          <Input id="fullName" name="fullName" placeholder="Asha Mwinyi" required autoComplete="name" />
+          <Input
+            id="fullName"
+            name="fullName"
+            placeholder="Asha Mwinyi"
+            required
+            autoComplete="name"
+            defaultValue={state.fullName}
+            readOnly={state.otpRequired}
+          />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -47,12 +55,39 @@ export function RegisterForm() {
             placeholder="+255 7XX XXX XXX"
             required
             autoComplete="tel"
+            defaultValue={state.phone}
+            readOnly={state.otpRequired}
           />
-          <p className="text-xs text-muted-foreground">You can verify your phone number later from the dashboard.</p>
+          <p className="text-xs text-muted-foreground">
+            We verify ownership before creating an authenticated session.
+          </p>
         </div>
 
+        {state.otpRequired && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="code">Verification code</Label>
+            <Input
+              id="code"
+              name="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              placeholder="6-digit code"
+              required
+              autoFocus
+            />
+          </div>
+        )}
+
         <Button type="submit" className="mt-2 h-11" disabled={pending}>
-          {pending ? "Creating account..." : "Create account"}
+          {pending
+            ? state.otpRequired
+              ? "Verifying..."
+              : "Sending code..."
+            : state.otpRequired
+              ? "Verify & continue"
+              : "Create account"}
         </Button>
       </form>
     </AuthShell>

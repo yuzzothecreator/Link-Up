@@ -55,6 +55,30 @@ export const loanApplicationSchema = z.object({
   termDays: z.coerce.number().int().min(7).max(365),
   purpose: z.string().min(3, "Describe the purpose").max(300),
   groupId: z.string().uuid().optional().or(z.literal("")),
+  productId: z.string().uuid("Select a valid loan provider and product").optional(),
+})
+
+export const marketplaceApplicationSchema = z.object({
+  productId: z.string().uuid("Select a loan product"),
+  amount: z.coerce.number().positive("Enter a valid amount"),
+  termDays: z.coerce.number().int().positive("Enter a valid term"),
+  purpose: z.string().min(10, "Describe how you will use the loan").max(500),
+  groupId: z.string().uuid().optional().or(z.literal("")),
+  shareIdentity: z.literal("on"),
+  shareTrustScore: z.literal("on"),
+  shareCashflow: z.literal("on"),
+  shareTransactions: z.string().optional(),
+  shareWallet: z.string().optional(),
+  shareAssets: z.string().optional(),
+})
+
+export const lenderOfferSchema = z.object({
+  applicationId: z.string().uuid(),
+  amount: z.coerce.number().positive(),
+  termDays: z.coerce.number().int().positive(),
+  interestRate: z.coerce.number().min(0).max(100),
+  fees: z.coerce.number().min(0).default(0),
+  conditions: z.string().max(1000).optional(),
 })
 
 export const depositSchema = z.object({

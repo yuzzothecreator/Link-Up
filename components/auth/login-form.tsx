@@ -15,7 +15,7 @@ export function LoginForm() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Enter your phone number to access your account."
+      subtitle="Secure sign-in with a one-time SMS code."
       footer={
         <>
           New to Link-Up?{" "}
@@ -42,11 +42,36 @@ export function LoginForm() {
             placeholder="+255 7XX XXX XXX"
             required
             autoComplete="tel"
+            defaultValue={state.phone}
+            readOnly={state.otpRequired}
           />
         </div>
 
+        {state.otpRequired && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="code">Verification code</Label>
+            <Input
+              id="code"
+              name="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              placeholder="6-digit code"
+              required
+              autoFocus
+            />
+          </div>
+        )}
+
         <Button type="submit" className="mt-2 h-11" disabled={pending}>
-          {pending ? "Logging in..." : "Log in"}
+          {pending
+            ? state.otpRequired
+              ? "Verifying..."
+              : "Sending code..."
+            : state.otpRequired
+              ? "Verify & log in"
+              : "Send login code"}
         </Button>
       </form>
     </AuthShell>

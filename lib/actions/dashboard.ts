@@ -107,12 +107,15 @@ export async function applyLoanAction(_prev: ActionState, formData: FormData): P
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("nida_verification_status, nida_number")
+    .select("role, nida_verification_status, nida_number")
     .eq("id", session.userId)
     .maybeSingle()
 
   const nidaStatus = profile?.nida_verification_status as string | null | undefined
-  if (!profile?.nida_number || nidaStatus === "rejected" || nidaStatus === "unverified") {
+  if (profile?.role !== "borrower") {
+    return { error: "Only borrower accounts can apply for loans." }
+  }
+  if (!profile?.nida_number || nidaStatus !== "verified") {
     return {
       error:
         "Complete NIDA identity verification before applying for a loan. Your NIDA must match your date of birth.",

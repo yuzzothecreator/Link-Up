@@ -24,7 +24,8 @@ export async function middleware(request: NextRequest) {
   const isProtected =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/onboarding") ||
-    pathname.startsWith("/admin")
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/lender")
 
   // Not logged in trying to access a protected area.
   if (isProtected && !session) {
@@ -47,6 +48,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (
+    pathname.startsWith("/lender") &&
+    session &&
+    !["lender", "admin"].includes(session.role)
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/dashboard"
+    return NextResponse.redirect(url)
+  }
+
   // Force onboarding completion before dashboard access.
   if (
     pathname.startsWith("/dashboard") &&
@@ -62,5 +73,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/onboarding/:path*", "/admin/:path*", "/auth/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/onboarding/:path*",
+    "/admin/:path*",
+    "/lender/:path*",
+    "/auth/:path*",
+  ],
 }

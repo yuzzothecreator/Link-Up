@@ -10,17 +10,36 @@ export default async function FinancialsPage() {
   const session = await requireOnboarded()
   const admin = createAdminClient()
 
-  const { data: records } = await admin
-    .from("financial_records")
-    .select("*")
-    .eq("user_id", session.userId)
-    .order("record_date", { ascending: false })
+  const [
+    { data: records },
+    { data: importedTransactions },
+    { data: connections },
+  ] = await Promise.all([
+    admin
+      .from("financial_records")
+      .select("*")
+      .eq("user_id", session.userId)
+      .order("record_date", { ascending: false }),
+    admin
+      .from("imported_transactions")
+      .select("id, record_date, record_type, amount, description, reference")
+      .eq("user_id", session.userId)
+      .order("record_date", { ascending: false })
+      .limit(100),
+    admin
+      .from("financial_connections")
+      .select("id, connection_type, provider, account_mask, access_mode, status, last_synced_at")
+      .eq("user_id", session.userId)
+      .order("created_at", { ascending: false }),
+  ])
+
+  const allCashflow = [...(records ?? []), ...(importedTransactions ?? [])]
 
   const totalIncome =
-    records?.filter((r) => r.record_type === "income").reduce((acc, curr) => acc + Number(curr.amount), 0) ||
+    allCashflow.filter((r) => r.record_type === "income").reduce((acc, curr) => acc + Number(curr.amount), 0) ||
     0
   const totalExpense =
-    records?.filter((r) => r.record_type === "expense").reduce((acc, curr) => acc + Number(curr.amount), 0) ||
+    allCashflow.filter((r) => r.record_type === "expense").reduce((acc, curr) => acc + Number(curr.amount), 0) ||
     0
   const netCashFlow = totalIncome - totalExpense
 
@@ -85,11 +104,95 @@ export default async function FinancialsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Connected financial sources</CardTitle>
+          <CardDescription>
+            Link-Up currently supports consented statement imports. Direct provider APIs are added
+            only through contracted bank/mobile-money integrations.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!connections?.length ? (
+            <p className="text-sm text-muted-foreground">
+              No sources connected. Upload a statement above to register a source.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {connections.map((connection) => (
+                <div key={connection.id} className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium capitalize">{connection.provider.replace("_", " ")}</p>
+                    <span className="text-xs capitalize text-emerald-600">{connection.status}</span>
+                  </div>
+                  <p className="mt-1 text-xs capitalize text-muted-foreground">
+                    {connection.connection_type.replace("_", " ")} ·{" "}
+                    {connection.access_mode.replace("_", " ")}
+                  </p>
+                  {connection.last_synced_at && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Last synced {new Date(connection.last_synced_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Cash Flow Overview</CardTitle>
           <CardDescription>Recent income and expenses</CardDescription>
         </CardHeader>
         <CardContent>
           <FinancialsChart records={records || []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Imported bank / mobile-money transactions</CardTitle>
+          <CardDescription>
+            These rows remain private unless you explicitly grant a lender
+            <code className="mx-1 rounded bg-muted px-1">cashflow.transactions</code>
+            consent for one application.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!importedTransactions?.length ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No imported transactions.
+            </p>
+          ) : (
+            <div className="max-h-96 divide-y overflow-auto rounded-xl border">
+              {importedTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between gap-4 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {transaction.description ?? "Imported transaction"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(transaction.record_date).toLocaleDateString()}
+                      {transaction.reference ? ` · ${transaction.reference}` : ""}
+                    </p>
+                  </div>
+                  <p
+                    className={
+                      transaction.record_type === "income"
+                        ? "font-semibold text-emerald-600"
+                        : "font-semibold text-red-600"
+                    }
+                  >
+                    {transaction.record_type === "expense" ? "-" : "+"}
+                    {formatTZS(transaction.amount)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
