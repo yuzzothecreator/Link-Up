@@ -4,7 +4,7 @@ import { TrustScoreRing } from "@/components/dashboard/trust-score-ring"
 import { TrendingUp, FileCheck, Landmark, ArrowLeftRight, CheckCircle2 } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Trust Score · trustLink" }
+export const metadata: Metadata = { title: "Trust Score · Link-Up" }
 
 export default async function TrustScorePage() {
   const session = await requireOnboarded()

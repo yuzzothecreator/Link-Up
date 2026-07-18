@@ -76,7 +76,7 @@ export function DashboardLayout({
                     <ShieldCheck className="h-4 w-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">trustLink</span>
+                    <span className="truncate font-semibold">Link-Up</span>
                     <span className="truncate text-xs text-muted-foreground capitalize">{user.role} dashboard</span>
                   </div>
                 </Link>

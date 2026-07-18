@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'trustLink — Build credit, unlock loans',
+  title: 'Link-Up — Build credit, unlock loans',
   description:
     'A trust-based microfinance platform for Tanzanian small businesses. Verify your identity, build a trust score, and access fair loans individually or through your kikundi.',
   generator: 'v0.app',

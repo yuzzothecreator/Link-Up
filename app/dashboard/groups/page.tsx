@@ -6,7 +6,7 @@ import { Users, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Kikundi Groups · trustLink" }
+export const metadata: Metadata = { title: "Kikundi Groups · Link-Up" }
 
 export default async function GroupsPage() {
   const session = await requireOnboarded()

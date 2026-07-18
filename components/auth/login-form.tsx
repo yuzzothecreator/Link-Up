@@ -18,7 +18,7 @@ export function LoginForm() {
       subtitle="Enter your phone number to access your account."
       footer={
         <>
-          New to trustLink?{" "}
+          New to Link-Up?{" "}
           <Link href="/auth/register" className="font-medium text-primary hover:underline">
             Create an account
           </Link>

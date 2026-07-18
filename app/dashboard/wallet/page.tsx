@@ -7,7 +7,7 @@ import { DepositForm } from "./deposit-form"
 import { Wallet as WalletIcon, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Wallet · trustLink" }
+export const metadata: Metadata = { title: "Wallet · Link-Up" }
 
 export default async function WalletPage() {
   const session = await requireOnboarded()

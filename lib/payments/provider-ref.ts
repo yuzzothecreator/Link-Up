@@ -37,7 +37,7 @@ export async function persistProviderRef(
   if (!error) return
 
   // Column missing — fall back to description encoding.
-  console.warn("[trustLink] provider_ref column missing; encoding in description. Run: ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS provider_ref TEXT;")
+  console.warn("[Link-Up] provider_ref column missing; encoding in description. Run: ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS provider_ref TEXT;")
   const description = embedProviderRef(currentDescription ?? "Mobile money deposit", providerRef)
   await admin.from("transactions").update({ description }).eq("reference", reference)
 }

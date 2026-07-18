@@ -55,7 +55,7 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
   const apiKey = process.env.BRIQ_API_KEY
 
   if (!apiKey) {
-    console.log(`[trustLink][SMS MOCK] To: ${to} | ${message}`)
+    console.log(`[Link-Up][SMS MOCK] To: ${to} | ${message}`)
     return { ok: true, mock: true }
   }
 
@@ -73,7 +73,7 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok || data?.success === false) {
-      console.error("[trustLink][SMS] Briq error:", res.status, data)
+      console.error("[Link-Up][SMS] Briq error:", res.status, data)
       return {
         ok: false,
         mock: false,
@@ -87,7 +87,7 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
       messageId: data?.data?.message_id ?? data?.id,
     }
   } catch (err) {
-    console.error("[trustLink][SMS] Briq request failed:", err)
+    console.error("[Link-Up][SMS] Briq request failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Briq" }
   }
 }
@@ -97,7 +97,7 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
   const apiKey = process.env.BRIQ_API_KEY
 
   if (!apiKey) {
-    console.log(`[trustLink][OTP MOCK] Request OTP for ${phone}`)
+    console.log(`[Link-Up][OTP MOCK] Request OTP for ${phone}`)
     return { ok: true, mock: true }
   }
 
@@ -113,7 +113,7 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
           minutes_to_expire: 10,
           sender_id: process.env.BRIQ_SENDER_ID ?? "BIASHARA",
           message_template:
-            "Your trustLink verification code is {code}. It expires in {expiry} minutes. Do not share this code.",
+            "Your Link-Up verification code is {code}. It expires in {expiry} minutes. Do not share this code.",
         }),
       ),
     })
@@ -121,7 +121,7 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok || data?.success === false) {
-      console.error("[trustLink][OTP] Briq request error:", res.status, data)
+      console.error("[Link-Up][OTP] Briq request error:", res.status, data)
       const detail =
         typeof data?.detail === "string"
           ? data.detail
@@ -135,7 +135,7 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
       expiresAt: data?.data?.expires_at,
     }
   } catch (err) {
-    console.error("[trustLink][OTP] Briq request failed:", err)
+    console.error("[Link-Up][OTP] Briq request failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Briq" }
   }
 }
@@ -145,7 +145,7 @@ export async function resendOtp(phone: string): Promise<BriqOtpResult> {
   const apiKey = process.env.BRIQ_API_KEY
 
   if (!apiKey) {
-    console.log(`[trustLink][OTP MOCK] Resend OTP for ${phone}`)
+    console.log(`[Link-Up][OTP MOCK] Resend OTP for ${phone}`)
     return { ok: true, mock: true }
   }
 
@@ -161,7 +161,7 @@ export async function resendOtp(phone: string): Promise<BriqOtpResult> {
           minutes_to_expire: 10,
           sender_id: process.env.BRIQ_SENDER_ID ?? "BIASHARA",
           message_template:
-            "Your trustLink verification code is {code}. It expires in {expiry} minutes. Do not share this code.",
+            "Your Link-Up verification code is {code}. It expires in {expiry} minutes. Do not share this code.",
         }),
       ),
     })
@@ -174,7 +174,7 @@ export async function resendOtp(phone: string): Promise<BriqOtpResult> {
     }
 
     if (!res.ok || data?.success === false) {
-      console.error("[trustLink][OTP] Briq resend error:", res.status, data)
+      console.error("[Link-Up][OTP] Briq resend error:", res.status, data)
       const detail =
         typeof data?.detail === "string"
           ? data.detail
@@ -188,7 +188,7 @@ export async function resendOtp(phone: string): Promise<BriqOtpResult> {
       expiresAt: data?.data?.expires_at,
     }
   } catch (err) {
-    console.error("[trustLink][OTP] Briq resend failed:", err)
+    console.error("[Link-Up][OTP] Briq resend failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Briq" }
   }
 }
@@ -234,7 +234,7 @@ export async function verifyOtpCode(phone: string, code: string): Promise<BriqOt
 
     return { ok: true, mock: false }
   } catch (err) {
-    console.error("[trustLink][OTP] Briq verify failed:", err)
+    console.error("[Link-Up][OTP] Briq verify failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Briq" }
   }
 }

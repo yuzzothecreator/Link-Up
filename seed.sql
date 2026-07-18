@@ -1,4 +1,4 @@
--- Seed script for trustLink sample credentials
+-- Seed script for Link-Up sample credentials
 
 -- Clean up existing seed data if any
 DELETE FROM public.trust_scores WHERE user_id IN ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33');
@@ -32,7 +32,7 @@ INSERT INTO public.profiles (
   true,
   true,
   'complete',
-  'TrustLink Admin Corp',
+  'Link-Up Admin Corp',
   'Services',
   'Dar es Salaam',
   5,

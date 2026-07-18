@@ -5,7 +5,7 @@ import { maskPhone } from "@/lib/format"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Dashboard · trustLink",
+  title: "Dashboard · Link-Up",
 }
 
 export default async function DashboardRootLayout({

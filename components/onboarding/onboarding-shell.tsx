@@ -25,7 +25,7 @@ export function OnboardingShell({
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">trustLink</span>
+          <span className="text-lg font-semibold tracking-tight">Link-Up</span>
         </Link>
         <span className="text-sm text-muted-foreground">
           Step {currentIndex + 1} of {steps.length}

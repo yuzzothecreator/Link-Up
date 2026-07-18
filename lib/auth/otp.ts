@@ -78,7 +78,7 @@ export async function issueOtp(phone: string, fullName?: string) {
 
   if (briq.mock || isBriqMockMode()) {
     console.log(
-      `[trustLink][OTP MOCK] Code for ${phone}: use any 6-digit code (Briq not configured)`,
+      `[Link-Up][OTP MOCK] Code for ${phone}: use any 6-digit code (Briq not configured)`,
     )
   }
 

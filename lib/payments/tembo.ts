@@ -98,7 +98,7 @@ export async function initiatePayment(
 
   if (!accountId || !secretKey) {
     console.log(
-      `[trustLink][PAY MOCK] Initiate ${params.reference} amount=${params.amount} phone=${params.phone}`,
+      `[Link-Up][PAY MOCK] Initiate ${params.reference} amount=${params.amount} phone=${params.phone}`,
     )
     return { ok: true, mock: true, providerRef: `MOCK-${params.reference}` }
   }
@@ -117,7 +117,7 @@ export async function initiatePayment(
         msisdn: phoneNumber,
         amount,
         transactionRef: params.reference,
-        narration: params.narration ?? "trustLink deposit",
+        narration: params.narration ?? "Link-Up deposit",
         transactionDate: new Date().toISOString(),
         callbackUrl,
       }),
@@ -126,7 +126,7 @@ export async function initiatePayment(
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      console.error("[trustLink][PAY] Tembo error:", res.status, data)
+      console.error("[Link-Up][PAY] Tembo error:", res.status, data)
       return {
         ok: false,
         mock: false,
@@ -157,7 +157,7 @@ export async function initiatePayment(
       status: data?.statusCode ?? "pending",
     }
   } catch (err) {
-    console.error("[trustLink][PAY] Tembo request failed:", err)
+    console.error("[Link-Up][PAY] Tembo request failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Tembo Pay" }
   }
 }
@@ -195,7 +195,7 @@ export async function getCollectionStatus(
       rawStatus: data?.statusCode,
     }
   } catch (err) {
-    console.error("[trustLink][PAY] Tembo status failed:", err)
+    console.error("[Link-Up][PAY] Tembo status failed:", err)
     return { ok: false, status: "pending", error: "Network error contacting Tembo Pay" }
   }
 }

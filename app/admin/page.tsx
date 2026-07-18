@@ -4,7 +4,7 @@ import { StatCard } from "@/components/dashboard/stat-card"
 import { Users, Landmark, AlertCircle, TrendingUp } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Admin Overview · trustLink" }
+export const metadata: Metadata = { title: "Admin Overview · Link-Up" }
 
 export default async function AdminOverview() {
   await requireRole("admin")

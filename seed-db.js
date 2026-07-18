@@ -15,7 +15,7 @@ const users = [
     is_phone_verified: true,
     onboarding_complete: true,
     onboarding_step: 'complete',
-    business_name: 'TrustLink Admin Corp',
+    business_name: 'Link-Up Admin Corp',
     business_type: 'Services',
     business_location: 'Dar es Salaam',
     years_in_operation: 5,

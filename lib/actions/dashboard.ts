@@ -53,7 +53,7 @@ export async function depositAction(_prev: ActionState, formData: FormData): Pro
     amount,
     phone: payPhone,
     provider,
-    narration: "trustLink deposit",
+    narration: "Link-Up deposit",
   })
 
   if (!result.ok) {

@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/dashboard/empty-state"
 import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Transactions · trustLink" }
+export const metadata: Metadata = { title: "Transactions · Link-Up" }
 
 export default async function TransactionsPage() {
   const session = await requireOnboarded()

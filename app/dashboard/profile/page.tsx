@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Clock } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Profile · trustLink" }
+export const metadata: Metadata = { title: "Profile · Link-Up" }
 
 export default async function ProfilePage() {
   const session = await requireOnboarded()

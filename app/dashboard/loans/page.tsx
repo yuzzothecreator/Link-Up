@@ -7,7 +7,7 @@ import { LoanApplicationForm } from "./loan-form"
 import { Landmark } from "lucide-react"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Loans · trustLink" }
+export const metadata: Metadata = { title: "Loans · Link-Up" }
 
 export default async function LoansPage() {
   const session = await requireOnboarded()
