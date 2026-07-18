@@ -1,8 +1,16 @@
+import bcrypt from "bcryptjs"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { isBriqMockMode, requestOtp, verifyOtpCode } from "@/lib/sms/briq"
+import {
+  getBriqPublicStatus,
+  isBriqMockMode,
+  sendSms,
+  verifyOtpCode,
+} from "@/lib/sms/briq"
 
 const RESEND_WINDOW_MS = 60 * 1000
 const MAX_SENDS_PER_HOUR = 5
+const MAX_VERIFY_ATTEMPTS = 5
+const OTP_TTL_MS = 10 * 60 * 1000
 
 const TEST_NUMBERS: Record<string, string> = {
   "+255711111111": "Admin User",
@@ -14,13 +22,26 @@ function allowTestOtp() {
   return process.env.NODE_ENV !== "production" && process.env.ALLOW_TEST_OTP === "true"
 }
 
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000))
+}
+
 /**
- * Creates and sends an OTP via Briq's OTP API (real SMS).
- * Enforces app-level rate limiting: 1 send / 60s and 5 / hour per phone.
+ * Creates a local OTP, stores a hash, and delivers it via Briq instant SMS.
+ * Instant SMS requires an approved sender_id (defaults to "BRIQ OTP").
  */
 export async function issueOtp(phone: string, fullName?: string) {
   if (allowTestOtp() && TEST_NUMBERS[phone]) {
     return { ok: true as const }
+  }
+
+  const status = getBriqPublicStatus()
+  if (!status.configured && process.env.NODE_ENV === "production") {
+    console.error("[OTP] Briq not configured", status)
+    return {
+      ok: false as const,
+      error: "SMS is not configured. Set BRIQ_API_KEY (and BRIQ_SENDER_ID=BRIQ OTP) in Vercel.",
+    }
   }
 
   const admin = createAdminClient()
@@ -45,76 +66,126 @@ export async function issueOtp(phone: string, fullName?: string) {
     }
   }
 
-  // Always use /otp/request — Briq invalidates any prior active OTP automatically.
-  const briq = await requestOtp(phone)
+  const code = generateCode()
+  const codeHash = await bcrypt.hash(code, 10)
+  const expiresAt = new Date(now + OTP_TTL_MS).toISOString()
 
-  if (!briq.ok) {
-    return { ok: false as const, error: briq.error ?? "Could not send verification code." }
+  const sms = await sendSms(
+    phone,
+    `Your Link-Up verification code is ${code}. Valid for 10 minutes. Do not share it.`,
+  )
+
+  if (!sms.ok) {
+    console.error("[OTP] SMS send failed", { phone, error: sms.error, briq: status })
+    return {
+      ok: false as const,
+      error: sms.error ?? "Could not send verification code. Check Briq SMS settings.",
+    }
   }
 
-  // Audit / rate-limit row only — Briq stores and hashes the real code.
   await admin.from("otp_codes").update({ consumed: true }).eq("phone", phone).eq("consumed", false)
 
   const { error } = await admin.from("otp_codes").insert({
     phone,
-    code_hash: briq.mock ? "local-mock" : "briq-managed",
+    code_hash: sms.mock ? "local-mock" : codeHash,
     full_name: fullName ?? null,
-    expires_at: briq.expiresAt
-      ? new Date(briq.expiresAt).toISOString()
-      : new Date(now + 10 * 60 * 1000).toISOString(),
+    expires_at: expiresAt,
   })
 
   if (error) {
-    console.error("[OTP] Database error inserting audit row:", error)
-    // SMS already sent — don't fail the user on audit insert.
+    console.error("[OTP] Database error inserting OTP row:", error)
+    return { ok: false as const, error: "Could not save verification code. Try again." }
   }
 
-  // Record notification without storing the plaintext code.
   await admin.from("notifications").insert({
     user_id: null,
     channel: "sms",
     type: "otp",
-    message: briq.mock
+    message: sms.mock
       ? `[MOCK] Verification code would be sent to ${phone}`
       : `Verification code sent via Briq SMS to ${phone}`,
     status: "sent",
   })
 
-  if (briq.mock || isBriqMockMode()) {
-    console.log(
-      `[Link-Up][OTP MOCK] Code for ${phone}: use any 6-digit code (Briq not configured)`,
-    )
+  if (sms.mock || isBriqMockMode()) {
+    console.log(`[Link-Up][OTP MOCK] Code for ${phone}: ${code}`)
+  } else {
+    console.log("[Link-Up][OTP] SMS delivered path ok for", phone, "sender", status.senderId)
   }
 
   return { ok: true as const }
 }
 
 /**
- * Verifies an OTP via Briq. On success returns stored full_name when available.
+ * Verifies a user OTP against the hashed local code.
+ * Falls back to Briq OTP verify for older briq-managed rows.
  */
 export async function verifyOtp(phone: string, code: string) {
   if (allowTestOtp() && code === "123456" && TEST_NUMBERS[phone]) {
     return { ok: true as const, fullName: TEST_NUMBERS[phone] }
   }
 
-  const briq = await verifyOtpCode(phone, code)
-  if (!briq.ok) {
-    return { ok: false as const, error: briq.error ?? "Incorrect code. Please try again." }
+  const cleaned = code.replace(/\D/g, "")
+  if (!/^\d{6}$/.test(cleaned)) {
+    return { ok: false as const, error: "Enter the 6-digit code." }
   }
 
   const admin = createAdminClient()
   const { data: row } = await admin
     .from("otp_codes")
-    .select("id, full_name")
+    .select("id, full_name, code_hash, expires_at, attempts")
     .eq("phone", phone)
     .eq("consumed", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  if (row) {
-    await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+  if (!row) {
+    // Legacy Briq-managed codes (if any) — try remote verify.
+    const briq = await verifyOtpCode(phone, cleaned)
+    if (!briq.ok) {
+      return { ok: false as const, error: briq.error ?? "No active code. Request a new one." }
+    }
+    return { ok: true as const, fullName: null }
   }
 
-  return { ok: true as const, fullName: (row?.full_name as string | null) ?? null }
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+    return { ok: false as const, error: "Code expired. Request a new one." }
+  }
+
+  if ((row.attempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+    await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+    return { ok: false as const, error: "Too many attempts. Request a new code." }
+  }
+
+  if (row.code_hash === "local-mock") {
+    await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+    return { ok: true as const, fullName: (row.full_name as string | null) ?? null }
+  }
+
+  if (row.code_hash === "briq-managed") {
+    const briq = await verifyOtpCode(phone, cleaned)
+    if (!briq.ok) {
+      await admin
+        .from("otp_codes")
+        .update({ attempts: (row.attempts ?? 0) + 1 })
+        .eq("id", row.id)
+      return { ok: false as const, error: briq.error ?? "Incorrect code. Please try again." }
+    }
+    await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+    return { ok: true as const, fullName: (row.full_name as string | null) ?? null }
+  }
+
+  const match = await bcrypt.compare(cleaned, row.code_hash)
+  if (!match) {
+    await admin
+      .from("otp_codes")
+      .update({ attempts: (row.attempts ?? 0) + 1 })
+      .eq("id", row.id)
+    return { ok: false as const, error: "Incorrect code. Please try again." }
+  }
+
+  await admin.from("otp_codes").update({ consumed: true }).eq("id", row.id)
+  return { ok: true as const, fullName: (row.full_name as string | null) ?? null }
 }

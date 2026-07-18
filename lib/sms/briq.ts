@@ -4,14 +4,14 @@
  * Docs: https://docs.briq.tz
  * API Base: https://karibu.briq.tz/v1
  *
- * Messaging: POST /message/send-instant
- * OTP:      POST /otp/request | /otp/verify | /otp/resend
- *
- * Sender ID rules (Briq): 3–11 chars, A–Z / 0–9 only — no spaces or hyphens.
- * Invalid sender IDs often return API success but never deliver to the handset.
+ * Important:
+ * - `/message/send-instant` REQUIRES `sender_id` (422 if missing).
+ * - Unapproved senders (e.g. Link-Up / LINKUP) may return HTTP 200 but never deliver.
+ * - Safe default for this account: "BRIQ OTP"
  */
 
 const BRIQ_BASE_URL = process.env.BRIQ_BASE_URL ?? "https://karibu.briq.tz/v1"
+const DEFAULT_SENDER = "BRIQ OTP"
 
 export interface SendSmsResult {
   ok: boolean
@@ -28,8 +28,21 @@ export interface BriqOtpResult {
   expiresAt?: string
 }
 
+/** Trim + strip accidental quotes from Vercel/dashboard paste. */
+export function getBriqApiKey(): string | undefined {
+  let key = process.env.BRIQ_API_KEY?.trim()
+  if (!key) return undefined
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1).trim()
+  }
+  return key || undefined
+}
+
 export function isBriqMockMode() {
-  return !process.env.BRIQ_API_KEY
+  return !getBriqApiKey()
 }
 
 /** Briq expects E.164 digits only (no '+'). */
@@ -38,53 +51,45 @@ export function toBriqPhone(phone: string) {
 }
 
 /**
- * Custom SMS sender ID — OFF by default.
- *
- * Briq returns HTTP 200 even for unapproved senders, but the SMS never arrives.
- * That looks like "verification stopped working" after setting Link-Up / LINKUP.
- *
- * On Vercel: either delete BRIQ_SENDER_ID, or set it to DEFAULT / BRIQ OTP.
- * Only enable a custom ID after Briq has approved it:
- *   BRIQ_USE_CUSTOM_SENDER=true
- *   BRIQ_SENDER_ID=YOURAPPROVED
+ * Always returns a sender_id. Instant SMS will fail without one.
+ * Invalid / brand names fall back to Briq's approved "BRIQ OTP".
  */
-export function resolveSenderId(): string | undefined {
-  if (process.env.BRIQ_USE_CUSTOM_SENDER !== "true") {
-    return undefined
-  }
-
+export function resolveSenderId(): string {
   const raw = process.env.BRIQ_SENDER_ID?.trim()
-  if (!raw) return undefined
+  if (!raw) return DEFAULT_SENDER
 
-  const sentinel = raw.toLowerCase()
-  if (["default", "none", "auto", "off", "blank", "n/a", "na", "-", "_"].includes(sentinel)) {
-    return undefined
+  const lower = raw.toLowerCase()
+  if (["default", "none", "auto", "off", "blank", "n/a", "na", "-", "_"].includes(lower)) {
+    return DEFAULT_SENDER
   }
 
-  // Briq's own documented example is "BRIQ OTP" (with a space).
-  if (raw.toUpperCase() === "BRIQ OTP") return "BRIQ OTP"
-
-  if (!/^[A-Za-z0-9 ]{3,11}$/.test(raw)) {
+  // These look valid but are not approved and silently kill delivery.
+  const compact = raw.replace(/[\s-_]/g, "").toLowerCase()
+  if (compact === "linkup" || compact === "linküp") {
     console.warn(
-      `[Link-Up][SMS] BRIQ_SENDER_ID "${raw}" is invalid. Omitting sender (Briq default).`,
+      `[Link-Up][SMS] BRIQ_SENDER_ID "${raw}" is not an approved Briq sender. Using "${DEFAULT_SENDER}".`,
     )
-    return undefined
+    return DEFAULT_SENDER
   }
 
-  return raw.toUpperCase()
+  if (raw.toUpperCase() === "BRIQ OTP") return DEFAULT_SENDER
+
+  // Approved custom IDs: 3–11 letters/digits, optional single spaces (e.g. BRIQ OTP).
+  if (/^[A-Za-z0-9][A-Za-z0-9 ]{1,9}[A-Za-z0-9]$/.test(raw) || /^[A-Za-z0-9]{3,11}$/.test(raw)) {
+    return raw.includes(" ") ? raw : raw.toUpperCase()
+  }
+
+  console.warn(
+    `[Link-Up][SMS] BRIQ_SENDER_ID "${raw}" is invalid. Using "${DEFAULT_SENDER}".`,
+  )
+  return DEFAULT_SENDER
 }
 
-function briqHeaders() {
+function briqHeaders(apiKey: string) {
   return {
     "Content-Type": "application/json",
-    "X-API-Key": process.env.BRIQ_API_KEY!,
+    "X-API-Key": apiKey,
   }
-}
-
-function withOptionalAppKey<T extends Record<string, unknown>>(body: T): T {
-  const appKey = process.env.BRIQ_APP_KEY
-  if (appKey) return { ...body, app_key: appKey }
-  return body
 }
 
 function formatBriqError(data: unknown, status: number): string {
@@ -92,6 +97,16 @@ function formatBriqError(data: unknown, status: number): string {
   const d = data as Record<string, unknown>
   if (typeof d.detail === "string") return d.detail
   if (typeof d.message === "string") return d.message
+  if (Array.isArray(d.errors)) {
+    return d.errors
+      .map((item) => {
+        if (item && typeof item === "object" && "message" in item) {
+          return String((item as { message: unknown }).message)
+        }
+        return JSON.stringify(item)
+      })
+      .join("; ")
+  }
   if (Array.isArray(d.detail)) {
     return d.detail
       .map((item) => {
@@ -106,9 +121,17 @@ function formatBriqError(data: unknown, status: number): string {
 }
 
 export async function sendSms(to: string, message: string): Promise<SendSmsResult> {
-  const apiKey = process.env.BRIQ_API_KEY
+  const apiKey = getBriqApiKey()
 
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[Link-Up][SMS] BRIQ_API_KEY is missing in production")
+      return {
+        ok: false,
+        mock: false,
+        error: "SMS is not configured on the server. Set BRIQ_API_KEY in Vercel.",
+      }
+    }
     console.log(`[Link-Up][SMS MOCK] To: ${to} | ${message}`)
     return { ok: true, mock: true }
   }
@@ -118,24 +141,25 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
     return { ok: false, mock: false, error: "Invalid phone number for SMS delivery." }
   }
 
+  const senderId = resolveSenderId()
+
   try {
-    const body: Record<string, unknown> = {
+    const body = {
       recipients: [msisdn],
       content: message,
+      sender_id: senderId,
     }
-    const senderId = resolveSenderId()
-    if (senderId) body.sender_id = senderId
 
     const res = await fetch(`${BRIQ_BASE_URL}/message/send-instant`, {
       method: "POST",
-      headers: briqHeaders(),
+      headers: briqHeaders(apiKey),
       body: JSON.stringify(body),
     })
 
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok || data?.success === false) {
-      console.error("[Link-Up][SMS] Briq error:", res.status, data)
+      console.error("[Link-Up][SMS] Briq error:", res.status, data, { senderId })
       return {
         ok: false,
         mock: false,
@@ -143,6 +167,7 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
       }
     }
 
+    console.log("[Link-Up][SMS] Queued to", msisdn, "via", senderId, data?.status ?? "ok")
     return {
       ok: true,
       mock: false,
@@ -154,11 +179,18 @@ export async function sendSms(to: string, message: string): Promise<SendSmsResul
   }
 }
 
-/** Request a Briq-managed OTP delivered via SMS. */
+/** Legacy Briq-managed OTP request (kept as optional fallback). */
 export async function requestOtp(phone: string): Promise<BriqOtpResult> {
-  const apiKey = process.env.BRIQ_API_KEY
+  const apiKey = getBriqApiKey()
 
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false,
+        mock: false,
+        error: "SMS is not configured on the server. Set BRIQ_API_KEY in Vercel.",
+      }
+    }
     console.log(`[Link-Up][OTP MOCK] Request OTP for ${phone}`)
     return { ok: true, mock: true }
   }
@@ -168,33 +200,31 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
     return { ok: false, mock: false, error: "Invalid phone number for verification." }
   }
 
+  const senderId = resolveSenderId()
+
   try {
-    const payload: Record<string, unknown> = {
+    const payload = {
       phone_number: msisdn,
       delivery_method: "sms",
       otp_length: 6,
       minutes_to_expire: 10,
-      // Use Briq server default template — custom templates + bad senders
-      // are a common cause of "API success, phone never gets code".
+      sender_id: senderId,
     }
-    // Never attach sender_id unless explicitly opted in (see resolveSenderId).
-    const senderId = resolveSenderId()
-    if (senderId) payload.sender_id = senderId
 
     const res = await fetch(`${BRIQ_BASE_URL}/otp/request`, {
       method: "POST",
-      headers: briqHeaders(),
-      body: JSON.stringify(withOptionalAppKey(payload)),
+      headers: briqHeaders(apiKey),
+      body: JSON.stringify(payload),
     })
 
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok || data?.success === false) {
-      console.error("[Link-Up][OTP] Briq request error:", res.status, data)
+      console.error("[Link-Up][OTP] Briq request error:", res.status, data, { senderId })
       return { ok: false, mock: false, error: formatBriqError(data, res.status) }
     }
 
-    console.log("[Link-Up][OTP] Code queued for", msisdn, "expires", data?.data?.expires_at)
+    console.log("[Link-Up][OTP] Code queued for", msisdn, "via", senderId)
     return {
       ok: true,
       mock: false,
@@ -206,19 +236,17 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
   }
 }
 
-/**
- * Resend OTP — Briq /otp/request already invalidates prior codes,
- * so we reuse request for reliability.
- */
 export async function resendOtp(phone: string): Promise<BriqOtpResult> {
   return requestOtp(phone)
 }
 
-/** Verify a user-submitted OTP against Briq's active code. */
 export async function verifyOtpCode(phone: string, code: string): Promise<BriqOtpResult> {
-  const apiKey = process.env.BRIQ_API_KEY
+  const apiKey = getBriqApiKey()
 
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, mock: false, error: "SMS is not configured on the server." }
+    }
     if (/^\d{6}$/.test(code)) return { ok: true, mock: true }
     return { ok: false, mock: true, error: "Incorrect code. Please try again." }
   }
@@ -229,13 +257,11 @@ export async function verifyOtpCode(phone: string, code: string): Promise<BriqOt
   try {
     const res = await fetch(`${BRIQ_BASE_URL}/otp/verify`, {
       method: "POST",
-      headers: briqHeaders(),
-      body: JSON.stringify(
-        withOptionalAppKey({
-          phone_number: msisdn,
-          code: cleanedCode,
-        }),
-      ),
+      headers: briqHeaders(apiKey),
+      body: JSON.stringify({
+        phone_number: msisdn,
+        code: cleanedCode,
+      }),
     })
 
     const data = await res.json().catch(() => ({}))
@@ -255,5 +281,16 @@ export async function verifyOtpCode(phone: string, code: string): Promise<BriqOt
   } catch (err) {
     console.error("[Link-Up][OTP] Briq verify failed:", err)
     return { ok: false, mock: false, error: "Network error contacting Briq" }
+  }
+}
+
+/** Safe status for ops debugging (no secrets). */
+export function getBriqPublicStatus() {
+  const key = getBriqApiKey()
+  return {
+    configured: Boolean(key),
+    apiKeyLength: key?.length ?? 0,
+    senderId: resolveSenderId(),
+    baseUrl: BRIQ_BASE_URL,
   }
 }
