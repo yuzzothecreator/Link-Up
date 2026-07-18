@@ -37,7 +37,15 @@ export async function middleware(request: NextRequest) {
   // Logged in but visiting an auth page → send to the right place.
   if (isAuthPage && session) {
     const url = request.nextUrl.clone()
-    url.pathname = session.onboardingComplete ? "/dashboard" : "/onboarding"
+    if (!session.onboardingComplete) {
+      url.pathname = "/onboarding"
+    } else if (session.role === "lender") {
+      url.pathname = "/lender"
+    } else if (session.role === "admin") {
+      url.pathname = "/admin"
+    } else {
+      url.pathname = "/dashboard"
+    }
     return NextResponse.redirect(url)
   }
 

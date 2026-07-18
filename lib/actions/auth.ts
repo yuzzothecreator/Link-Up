@@ -90,7 +90,14 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     isPhoneVerified: true,
     onboardingComplete: existing.onboarding_complete,
   })
-  redirect(existing.onboarding_complete ? "/dashboard" : "/onboarding")
+  redirect(postAuthPath(existing.role as Role, existing.onboarding_complete))
+}
+
+function postAuthPath(role: Role, onboardingComplete: boolean) {
+  if (!onboardingComplete) return "/onboarding"
+  if (role === "lender") return "/lender"
+  if (role === "admin") return "/admin"
+  return "/dashboard"
 }
 
 /** Login requires an OTP; knowing a phone number is never sufficient. */
@@ -138,7 +145,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     onboardingComplete: existing.onboarding_complete,
   })
 
-  redirect(existing.onboarding_complete ? "/dashboard" : "/onboarding")
+  redirect(postAuthPath(existing.role as Role, existing.onboarding_complete))
 }
 
 /** Resend OTP for dashboard verification. */
