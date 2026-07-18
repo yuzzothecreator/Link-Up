@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import Link from "next/link"
 import { loginAction, type ActionState } from "@/lib/actions/auth"
 import { Input } from "@/components/ui/input"
@@ -11,11 +11,12 @@ import { AuthShell } from "@/components/auth/auth-shell"
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(loginAction, {})
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Secure sign-in with a one-time SMS code."
+      subtitle="Sign in with your phone number and password."
       footer={
         <>
           New to Link-Up?{" "}
@@ -43,35 +44,38 @@ export function LoginForm() {
             required
             autoComplete="tel"
             defaultValue={state.phone}
-            readOnly={state.otpRequired}
           />
         </div>
 
-        {state.otpRequired && (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="code">Verification code</Label>
-            <Input
-              id="code"
-              name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="\d{6}"
-              maxLength={6}
-              placeholder="6-digit code"
-              required
-              autoFocus
-            />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link
+              href="/auth/reset-password"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
-        )}
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            placeholder="Your password"
+          />
+          <button
+            type="button"
+            className="self-start text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? "Hide password" : "Show password"}
+          </button>
+        </div>
 
         <Button type="submit" className="mt-2 h-11" disabled={pending}>
-          {pending
-            ? state.otpRequired
-              ? "Verifying..."
-              : "Sending code..."
-            : state.otpRequired
-              ? "Verify & log in"
-              : "Send login code"}
+          {pending ? "Signing in..." : "Log in"}
         </Button>
       </form>
     </AuthShell>

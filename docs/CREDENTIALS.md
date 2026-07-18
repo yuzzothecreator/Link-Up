@@ -1,12 +1,25 @@
 # Link-Up credentials & staff access
 
-Link-Up does **not** use shared passwords. Every login is:
+Link-Up login is:
 
-**real phone number → Briq SMS OTP**
+**phone number + password** (daily use)
+
+SMS OTP is still used for:
+
+- proving phone ownership at registration
+- resetting a forgotten password
+
+## Borrowers
+
+1. Register with name, phone, password
+2. Confirm SMS code once
+3. Later logins: phone + password only
+
+Forgot password → `/auth/reset-password` (SMS code + new password).
 
 ## Production staff (protected)
 
-### 1. Set real phones in env (local or Vercel — do not commit)
+### 1. Set real phones in env (do not commit)
 
 ```env
 BOOTSTRAP_ADMIN_PHONE=+2557XXXXXXXX
@@ -20,53 +33,34 @@ ALLOW_TEST_OTP=false
 ### 2. Bootstrap once
 
 ```bash
-node --env-file=.env.local scripts/bootstrap-staff.mjs
+npm run bootstrap:staff
 ```
 
-This creates/updates admin and lender profiles with those phones. Roles cannot be self-assigned via register (register always creates `borrower`).
+Then open `/auth/reset-password` for that phone to set a password (SMS OTP).
 
-### 3. Log in
+### 3. Grant more staff later
 
-1. Open `/auth/login`
-2. Enter the **admin phone**
-3. Enter the **SMS code** from Briq
+**Admin → Users → Grant staff access**, then that person sets a password via reset.
 
-Same for lender → `/lender`.
+## Database
 
-### 4. Grant more staff later
+Run in Supabase SQL Editor:
 
-Signed-in admins use **Admin → Users → Grant staff access** with another real phone.
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS password_hash TEXT;
+```
 
-## What is blocked in production
+(Or run `migrations/005_password_auth.sql`.)
+
+## Production blocks
 
 | Thing | Behavior |
 | --- | --- |
-| `+255711111111` / `722` / `733` demo phones | Rejected for OTP |
-| `ALLOW_TEST_OTP=true` | Ignored when `NODE_ENV=production` |
-| Fixed OTP `123456` | Local-only with `ALLOW_TEST_OTP` |
-| Public registration as admin | Impossible — role is always `borrower` |
+| Demo phones `+255711/722/733` | Rejected for OTP |
+| `ALLOW_TEST_OTP=true` | Ignored in production |
+| Register as admin | Impossible (always borrower) |
 
-## Local demo only (never production)
+## Secrets (never commit)
 
-`seed.sql` / `seed-db.js` create fake `+255711…` accounts for UI testing when `ALLOW_TEST_OTP=true`.
-
-Before client go-live, either:
-
-- Do not run seed on production Supabase, or
-- Demote/delete demo rows:
-
-```sql
-UPDATE public.profiles
-SET role = 'borrower'
-WHERE phone IN ('+255711111111', '+255722222222', '+255733333333');
-```
-
-## Secrets checklist
-
-Keep these only in Vercel / `.env.local`, never in git:
-
-- `SESSION_SECRET`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `BRIQ_API_KEY`
-- `TEMBO_SECRET_KEY` / `TEMBO_WEBHOOK_SECRET`
-- `BOOTSTRAP_*` phones (ops only; not required at runtime after bootstrap)
+`SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `BRIQ_API_KEY`, Tembo secrets, `BOOTSTRAP_*` phones.

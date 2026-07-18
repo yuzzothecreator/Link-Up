@@ -28,16 +28,25 @@ const phoneSchema = z
 export const registerSchema = z.object({
   fullName: z.string().min(2, "Enter your full name").max(120),
   phone: phoneSchema,
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
 })
 
 export const loginSchema = z.object({
   phone: phoneSchema,
+  password: z.string().min(1, "Enter your password"),
+})
+
+export const resetPasswordSchema = z.object({
+  phone: phoneSchema,
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code").optional(),
 })
 
 export const verifyOtpSchema = z.object({
   phone: phoneSchema,
   code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
 })
+
 
 export const businessProfileSchema = z.object({
   businessType: z.string().min(2, "Select a business type"),

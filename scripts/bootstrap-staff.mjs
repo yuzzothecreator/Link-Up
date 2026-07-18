@@ -13,11 +13,11 @@
  *   BOOTSTRAP_LENDER_NAME=Underwriter Name
  *   BOOTSTRAP_LENDER_ORG=Link-Up Partner Bank
  *
- * After bootstrap, staff log in at /auth/login with that phone + Briq SMS OTP.
- * There is no shared password and no fixed OTP in production.
+ * After bootstrap, set a password via /auth/reset-password (SMS OTP),
+ * then log in at /auth/login with phone + password.
  */
 
-const { createClient } = require("@supabase/supabase-js")
+import { createClient } from "@supabase/supabase-js"
 
 function normalizePhone(input) {
   let n = String(input || "").replace(/[^\d+]/g, "").replace(/^\+/, "")
@@ -159,7 +159,7 @@ async function main() {
     process.exit(1)
   }
 
-  console.log("\nStaff login: /auth/login → real phone → Briq SMS OTP")
+  console.log("\nNext: /auth/reset-password → set password → /auth/login")
   console.log("Never enable ALLOW_TEST_OTP in production.")
 }
 

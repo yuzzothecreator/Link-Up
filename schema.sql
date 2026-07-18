@@ -28,13 +28,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   nida_normalized TEXT,
   nida_verification_status TEXT NOT NULL DEFAULT 'unverified',
   nida_verified_at TIMESTAMPTZ,
-  nida_provider_ref TEXT
+  nida_provider_ref TEXT,
+  password_hash TEXT
 );
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nida_normalized TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nida_verification_status TEXT DEFAULT 'unverified';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nida_verified_at TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nida_provider_ref TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 -- 2. otp_codes Table
 CREATE TABLE IF NOT EXISTS public.otp_codes (

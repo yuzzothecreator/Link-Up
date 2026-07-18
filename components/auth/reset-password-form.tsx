@@ -2,25 +2,28 @@
 
 import { useActionState, useState } from "react"
 import Link from "next/link"
-import { registerAction, type ActionState } from "@/lib/actions/auth"
+import { resetPasswordAction, type ActionState } from "@/lib/actions/auth"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AuthShell } from "@/components/auth/auth-shell"
 
-export function RegisterForm() {
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(registerAction, {})
+export function ResetPasswordForm() {
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    resetPasswordAction,
+    {},
+  )
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Verify your phone once, set a password, then sign in easily next time."
+      title="Reset password"
+      subtitle="We send an SMS code to prove you own the phone, then you set a new password."
       footer={
         <>
-          Already have an account?{" "}
+          Remembered it?{" "}
           <Link href="/auth/login" className="font-medium text-primary hover:underline">
             Log in
           </Link>
@@ -33,24 +36,11 @@ export function RegisterForm() {
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         ) : null}
-        {state.success && state.message && state.otpRequired ? (
+        {state.success && state.message ? (
           <Alert>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
         ) : null}
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="fullName">Full name</Label>
-          <Input
-            id="fullName"
-            name="fullName"
-            placeholder="Asha Mwinyi"
-            required
-            autoComplete="name"
-            defaultValue={state.fullName}
-            readOnly={state.otpRequired}
-          />
-        </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="phone">Phone number</Label>
@@ -67,43 +57,10 @@ export function RegisterForm() {
           />
         </div>
 
-        {!state.otpRequired ? (
+        {state.otpRequired ? (
           <>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete="new-password"
-                minLength={8}
-                placeholder="At least 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Use letters and numbers.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                autoComplete="new-password"
-                minLength={8}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <input type="hidden" name="password" value={password} />
-            <input type="hidden" name="confirmPassword" value={confirmPassword} />
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="code">SMS verification code</Label>
+              <Label htmlFor="code">SMS code</Label>
               <Input
                 id="code"
                 name="code"
@@ -116,17 +73,43 @@ export function RegisterForm() {
                 autoFocus
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">New password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
           </>
-        )}
+        ) : null}
 
         <Button type="submit" className="mt-2 h-11" disabled={pending}>
           {pending
             ? state.otpRequired
-              ? "Verifying..."
+              ? "Saving..."
               : "Sending code..."
             : state.otpRequired
-              ? "Verify & create account"
-              : "Continue"}
+              ? "Set password & log in"
+              : "Send reset code"}
         </Button>
       </form>
     </AuthShell>
