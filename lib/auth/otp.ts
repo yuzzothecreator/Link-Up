@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { isBriqMockMode, requestOtp, resendOtp, verifyOtpCode } from "@/lib/sms/briq"
+import { isBriqMockMode, requestOtp, verifyOtpCode } from "@/lib/sms/briq"
 
 const RESEND_WINDOW_MS = 60 * 1000
 const MAX_SENDS_PER_HOUR = 5
@@ -41,8 +41,8 @@ export async function issueOtp(phone: string, fullName?: string) {
     }
   }
 
-  const hadRecent = Boolean(recent && recent.length > 0)
-  const briq = hadRecent ? await resendOtp(phone) : await requestOtp(phone)
+  // Always use /otp/request — Briq invalidates any prior active OTP automatically.
+  const briq = await requestOtp(phone)
 
   if (!briq.ok) {
     return { ok: false as const, error: briq.error ?? "Could not send verification code." }
