@@ -122,6 +122,14 @@ export default async function ProfilePage() {
               <DocRow label="National ID (NIDA)" status={nationalId?.status} />
               <DocRow label="Business License" status={businessLicense?.status} />
             </div>
+
+            <p className="mt-4 text-sm text-muted-foreground">
+              Need to upload or resubmit? Go to{" "}
+              <a href="/dashboard/verification" className="font-medium text-primary underline underline-offset-2">
+                Verification
+              </a>
+              .
+            </p>
           </div>
         </div>
       </div>

@@ -56,11 +56,11 @@ export function VerificationStatusBanner({
         <XCircle className="h-4 w-4" />
         <AlertTitle>Verification not approved</AlertTitle>
         <AlertDescription>
-          Your NIDA was rejected. Update your details on{" "}
-          <Link href="/dashboard/profile" className="font-medium underline underline-offset-2">
-            Profile
+          Your NIDA was rejected.           Update your details on{" "}
+          <Link href="/dashboard/verification" className="font-medium underline underline-offset-2">
+            Verification
           </Link>{" "}
-          and resubmit during onboarding or contact support.
+          and resubmit for review.
         </AlertDescription>
       </Alert>
     )
@@ -73,8 +73,8 @@ export function VerificationStatusBanner({
       <AlertDescription>
         Phone is verified, but NIDA approval is still required before you can apply for a loan.
         Check your status on{" "}
-        <Link href="/dashboard/profile" className="font-medium underline underline-offset-2">
-          Profile
+        <Link href="/dashboard/verification" className="font-medium underline underline-offset-2">
+          Verification
         </Link>
         .
       </AlertDescription>

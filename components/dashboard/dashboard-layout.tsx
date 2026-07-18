@@ -19,6 +19,7 @@ import {
   Briefcase,
   FileText,
   PieChart,
+  Shield,
 } from "lucide-react"
 import {
   Sidebar,
@@ -46,6 +47,7 @@ const mainNav = [
   { title: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
   { title: "Trust Score", href: "/dashboard/trust-score", icon: TrendingUp },
   { title: "Loans", href: "/dashboard/loans", icon: Landmark },
+  { title: "Verification", href: "/dashboard/verification", icon: Shield },
   { title: "Groups", href: "/dashboard/groups", icon: Users },
   { title: "Financials", href: "/dashboard/financials", icon: PieChart },
   { title: "Assets", href: "/dashboard/assets", icon: Briefcase },

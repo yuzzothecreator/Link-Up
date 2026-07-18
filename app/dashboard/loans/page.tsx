@@ -105,8 +105,14 @@ export default async function LoansPage() {
           <div className="mt-6">
             {!canApply ? (
               <p className="text-sm text-muted-foreground">
-                Loan applications unlock after phone verification and admin NIDA approval. Watch
-                Notifications for the approval SMS.
+                Loan applications unlock after phone verification and admin NIDA approval. Complete{" "}
+                <a
+                  href="/dashboard/verification"
+                  className="font-medium text-primary underline underline-offset-2"
+                >
+                  Verification
+                </a>{" "}
+                and watch Notifications for the approval SMS.
               </p>
             ) : products.length ? (
               <LoanApplicationForm products={products} />

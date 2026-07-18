@@ -38,21 +38,40 @@ export function toBriqPhone(phone: string) {
 }
 
 /**
- * Normalize sender ID to Briq rules: 3–11 alphanumeric characters.
- * Returns undefined when unset/invalid so Briq uses the account default.
+ * Custom SMS sender ID — OFF by default.
+ *
+ * Briq returns HTTP 200 even for unapproved senders, but the SMS never arrives.
+ * That looks like "verification stopped working" after setting Link-Up / LINKUP.
+ *
+ * On Vercel: either delete BRIQ_SENDER_ID, or set it to DEFAULT / BRIQ OTP.
+ * Only enable a custom ID after Briq has approved it:
+ *   BRIQ_USE_CUSTOM_SENDER=true
+ *   BRIQ_SENDER_ID=YOURAPPROVED
  */
 export function resolveSenderId(): string | undefined {
+  if (process.env.BRIQ_USE_CUSTOM_SENDER !== "true") {
+    return undefined
+  }
+
   const raw = process.env.BRIQ_SENDER_ID?.trim()
   if (!raw) return undefined
 
-  const cleaned = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
-  if (cleaned.length < 3 || cleaned.length > 11) {
+  const sentinel = raw.toLowerCase()
+  if (["default", "none", "auto", "off", "blank", "n/a", "na", "-", "_"].includes(sentinel)) {
+    return undefined
+  }
+
+  // Briq's own documented example is "BRIQ OTP" (with a space).
+  if (raw.toUpperCase() === "BRIQ OTP") return "BRIQ OTP"
+
+  if (!/^[A-Za-z0-9 ]{3,11}$/.test(raw)) {
     console.warn(
-      `[Link-Up][SMS] BRIQ_SENDER_ID "${raw}" is invalid (need 3–11 letters/digits). Using Briq default sender.`,
+      `[Link-Up][SMS] BRIQ_SENDER_ID "${raw}" is invalid. Omitting sender (Briq default).`,
     )
     return undefined
   }
-  return cleaned
+
+  return raw.toUpperCase()
 }
 
 function briqHeaders() {
@@ -155,9 +174,10 @@ export async function requestOtp(phone: string): Promise<BriqOtpResult> {
       delivery_method: "sms",
       otp_length: 6,
       minutes_to_expire: 10,
-      message_template:
-        "Your Link-Up code is {code}. Valid for {expiry} minutes. Do not share it.",
+      // Use Briq server default template — custom templates + bad senders
+      // are a common cause of "API success, phone never gets code".
     }
+    // Never attach sender_id unless explicitly opted in (see resolveSenderId).
     const senderId = resolveSenderId()
     if (senderId) payload.sender_id = senderId
 
