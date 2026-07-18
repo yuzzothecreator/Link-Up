@@ -1,17 +1,14 @@
 import bcrypt from "bcryptjs"
 import { createAdminClient } from "@/lib/supabase/admin"
-import {
-  getBriqPublicStatus,
-  isBriqMockMode,
-  sendSms,
-  verifyOtpCode,
-} from "@/lib/sms/briq"
+import { getBriqPublicStatus, isBriqMockMode, sendSms, verifyOtpCode } from "@/lib/sms/briq"
+import { assertProductionSafePhone } from "@/lib/auth/staff"
 
 const RESEND_WINDOW_MS = 60 * 1000
 const MAX_SENDS_PER_HOUR = 5
 const MAX_VERIFY_ATTEMPTS = 5
 const OTP_TTL_MS = 10 * 60 * 1000
 
+/** Local-only demo phones. Never work in production. */
 const TEST_NUMBERS: Record<string, string> = {
   "+255711111111": "Admin User",
   "+255722222222": "Borrower User",
@@ -31,6 +28,9 @@ function generateCode() {
  * Instant SMS requires an approved sender_id (defaults to "BRIQ OTP").
  */
 export async function issueOtp(phone: string, fullName?: string) {
+  const blocked = assertProductionSafePhone(phone)
+  if (blocked) return { ok: false as const, error: blocked }
+
   if (allowTestOtp() && TEST_NUMBERS[phone]) {
     return { ok: true as const }
   }
@@ -121,6 +121,9 @@ export async function issueOtp(phone: string, fullName?: string) {
  * Falls back to Briq OTP verify for older briq-managed rows.
  */
 export async function verifyOtp(phone: string, code: string) {
+  const blocked = assertProductionSafePhone(phone)
+  if (blocked) return { ok: false as const, error: blocked }
+
   if (allowTestOtp() && code === "123456" && TEST_NUMBERS[phone]) {
     return { ok: true as const, fullName: TEST_NUMBERS[phone] }
   }

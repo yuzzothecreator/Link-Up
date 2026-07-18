@@ -11,6 +11,7 @@ import {
   Users,
   User,
   LogOut,
+  Settings,
   ChevronRight,
   Bell,
   Briefcase,

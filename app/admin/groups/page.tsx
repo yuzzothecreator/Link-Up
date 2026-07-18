@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth/guards"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { formatTZS } from "@/lib/format"
-import { Users, ShieldCheck } from "lucide-react"
+import { Users } from "lucide-react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Groups · Admin" }
@@ -36,7 +36,6 @@ export default async function AdminGroupsPage() {
                 <th className="px-6 py-4 font-medium">Group Name</th>
                 <th className="px-6 py-4 font-medium">Members</th>
                 <th className="px-6 py-4 font-medium">Pool Balance</th>
-                <th className="px-6 py-4 font-medium">Health / Trust</th>
                 <th className="px-6 py-4 font-medium">Created</th>
               </tr>
             </thead>
@@ -44,8 +43,7 @@ export default async function AdminGroupsPage() {
               {(groups ?? []).map((group: any) => {
                 const membersCount = group.group_members?.length ?? 0
                 const balance = group.group_wallets?.[0]?.balance ?? 0
-                const mockScore = Math.floor(Math.random() * 300) + 500
-                
+
                 return (
                   <tr key={group.id} className="hover:bg-muted/30">
                     <td className="px-6 py-4 font-medium text-foreground">{group.name}</td>
@@ -57,12 +55,6 @@ export default async function AdminGroupsPage() {
                     </td>
                     <td className="px-6 py-4 font-medium text-emerald-600">
                       {formatTZS(balance)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        <ShieldCheck className={`h-4 w-4 ${mockScore >= 700 ? "text-emerald-500" : mockScore >= 500 ? "text-amber-500" : "text-red-500"}`} />
-                        <span className="font-semibold">{mockScore}</span>
-                      </div>
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {new Date(group.created_at).toLocaleDateString()}

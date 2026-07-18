@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "bootstrap:staff": "node --env-file=.env.local scripts/bootstrap-staff.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

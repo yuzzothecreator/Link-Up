@@ -33,7 +33,7 @@ export default async function GroupDetailPage({
     .eq("id", id)
     .single()
 
-  // Get members with their profiles
+  // Get members with their profiles and live trust scores
   const { data: members } = await admin
     .from("group_members")
     .select(`
@@ -42,7 +42,8 @@ export default async function GroupDetailPage({
       profiles:user_id (
         id,
         full_name,
-        phone
+        phone,
+        trust_scores:trust_scores (score)
       )
     `)
     .eq("group_id", id)
@@ -69,7 +70,7 @@ export default async function GroupDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Group Stats */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-indigo-600 p-6 text-primary-foreground shadow-lg">
+          <div className="relative overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground shadow-lg">
             <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
             <div className="relative">
               <div className="flex items-center gap-2 text-primary-foreground/80">
@@ -119,6 +120,7 @@ export default async function GroupDetailPage({
           <div className="mt-6 divide-y divide-border border-t border-border">
             {membersList.map((m: any) => {
               const profile = m.profiles
+              const score = Number(profile?.trust_scores?.score ?? profile?.trust_scores?.[0]?.score ?? 0)
               return (
                 <div key={profile.id} className="flex items-center justify-between py-4">
                   <div>
@@ -126,11 +128,12 @@ export default async function GroupDetailPage({
                     <p className="text-sm text-muted-foreground">{maskPhone(profile.phone)}</p>
                   </div>
                   <div className="flex items-center gap-4 text-right">
-                    {/* Mock trust score for UI */}
-                    <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
-                      <ShieldCheck className="h-3 w-3" />
-                      {Math.floor(Math.random() * 300) + 500}
-                    </div>
+                    {score > 0 ? (
+                      <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+                        <ShieldCheck className="h-3 w-3" />
+                        {score}
+                      </div>
+                    ) : null}
                     <Badge variant={m.role === "admin" ? "default" : "secondary"} className="capitalize">
                       {m.role}
                     </Badge>

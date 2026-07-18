@@ -7,7 +7,7 @@ import crypto from "crypto"
  * Endpoint: POST https://api.temboplus.com/tembo/v1/collection
  * Auth: x-account-id, x-secret-key, x-request-id
  *
- * If TEMBO_ACCOUNT_ID or TEMBO_SECRET_KEY is missing, falls back to mock mode.
+ * Missing credentials: mock only in development. Production fails closed.
  */
 
 const TEMBO_BASE_URL =
@@ -71,7 +71,6 @@ export function resolveChannel(phone: string, provider?: MobileMoneyProvider | n
     return "TZ-AIRTEL-C2B"
   }
   if (digits.startsWith("25562")) return "TZ-HALOTEL-C2B"
-  // Vodacom / M-Pesa prefixes: 25574, 25575, 25576, etc.
   return "TZ-VODACOM-C2B"
 }
 
@@ -97,6 +96,14 @@ export async function initiatePayment(
   const secretKey = process.env.TEMBO_SECRET_KEY
 
   if (!accountId || !secretKey) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[Link-Up][PAY] Tembo credentials missing in production")
+      return {
+        ok: false,
+        mock: false,
+        error: "Payments are not configured. Contact support.",
+      }
+    }
     console.log(
       `[Link-Up][PAY MOCK] Initiate ${params.reference} amount=${params.amount} phone=${params.phone}`,
     )
@@ -106,10 +113,8 @@ export async function initiatePayment(
   const phoneNumber = params.phone.replace(/^\+/, "")
   const amount = Math.round(params.amount)
   const channel = resolveChannel(params.phone, params.provider)
-  const callbackToken = process.env.TEMBO_WEBHOOK_SECRET
-  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/payments/webhook${
-    callbackToken ? `?token=${encodeURIComponent(callbackToken)}` : ""
-  }`
+  // Prefer header-authenticated webhooks; avoid putting secrets in callback query strings.
+  const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/payments/webhook`
 
   try {
     const res = await fetch(`${TEMBO_BASE_URL}/collection`, {
@@ -171,6 +176,9 @@ export async function getCollectionStatus(
   transactionRef: string,
 ): Promise<CollectionStatusResult> {
   if (isMockMode()) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, status: "pending", error: "Payments are not configured." }
+    }
     return { ok: true, status: "completed", providerRef: transactionId, rawStatus: "MOCK" }
   }
 
@@ -205,7 +213,7 @@ export async function getCollectionStatus(
 
 export function generateReference() {
   return (
-    "BT" +
+    "LU" +
     Date.now().toString(36).toUpperCase() +
     crypto.randomBytes(3).toString("hex").toUpperCase()
   )

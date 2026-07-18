@@ -77,7 +77,9 @@ regulatory process/sandbox and comply with the Personal Data Protection Act.
 - Run `migrations/003_lender_marketplace.sql`.
 - Replace seeded provider organizations with contracted, licensed providers.
 - Require OTP for every login; test OTP is disabled unless `ALLOW_TEST_OTP=true` in
-  non-production.
+  non-production. Demo phones (`+255711/722/733`) are blocked in production.
+- Bootstrap real admin/lender phones via `npm run bootstrap:staff` (see
+  `docs/CREDENTIALS.md`). Never ship shared passwords or fixed OTP codes.
 - Rotate session tokens after eight hours and resolve privileged roles from the DB.
 - Configure `TEMBO_WEBHOOK_SECRET` and a public HTTPS callback URL.
 - Move wallet credits/disbursements into an atomic PostgreSQL function before real

@@ -1,3 +1,5 @@
+-- LOCAL DEMO ONLY — do not run on production Supabase.
+-- Production staff: use scripts/bootstrap-staff.mjs with real phones (see docs/CREDENTIALS.md).
 -- Seed script for Link-Up sample credentials
 
 -- Clean up existing seed data if any

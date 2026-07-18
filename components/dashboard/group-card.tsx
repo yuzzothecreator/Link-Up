@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Users, ShieldCheck, ArrowRight } from "lucide-react"
+import { Users, ArrowRight } from "lucide-react"
 import { formatTZS } from "@/lib/format"
 import { Button } from "@/components/ui/button"
 
@@ -8,10 +8,9 @@ interface GroupCardProps {
   name: string
   memberCount: number
   totalSaved?: number
-  trustScore?: number
 }
 
-export function GroupCard({ id, name, memberCount, totalSaved = 0, trustScore = 0 }: GroupCardProps) {
+export function GroupCard({ id, name, memberCount, totalSaved = 0 }: GroupCardProps) {
   return (
     <div className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between">
@@ -28,15 +27,12 @@ export function GroupCard({ id, name, memberCount, totalSaved = 0, trustScore = 
 
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl bg-muted/50 p-4">
         <div>
-          <p className="text-xs text-muted-foreground">Total Saved</p>
+          <p className="text-xs text-muted-foreground">Pool balance</p>
           <p className="mt-1 font-semibold text-foreground">{formatTZS(totalSaved)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Group Trust Score</p>
-          <div className="mt-1 flex items-center gap-1.5 font-semibold text-foreground">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            {trustScore}
-          </div>
+          <p className="text-xs text-muted-foreground">Members</p>
+          <p className="mt-1 font-semibold text-foreground">{memberCount}</p>
         </div>
       </div>
 

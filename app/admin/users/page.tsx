@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/guards"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { Badge } from "@/components/ui/badge"
 import { maskPhone } from "@/lib/format"
+import { StaffAccessForm } from "./staff-access-form"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Users · Admin" }
@@ -27,8 +28,12 @@ export default async function AdminUsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage platform users.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage platform users. Privileged access is phone + SMS OTP only.
+        </p>
       </div>
+
+      <StaffAccessForm />
 
       <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -54,12 +59,23 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">{maskPhone(user.phone)}</td>
                     <td className="px-6 py-4">
-                      <Badge variant={user.role === "admin" ? "default" : "secondary"} className="capitalize">
+                      <Badge
+                        variant={user.role === "admin" ? "default" : "secondary"}
+                        className="capitalize"
+                      >
                         {user.role}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`font-semibold ${score >= 700 ? "text-emerald-600" : score >= 400 ? "text-amber-600" : "text-red-600"}`}>
+                      <span
+                        className={`font-semibold ${
+                          score >= 700
+                            ? "text-emerald-600"
+                            : score >= 400
+                              ? "text-amber-600"
+                              : "text-red-600"
+                        }`}
+                      >
                         {score}
                       </span>
                     </td>
