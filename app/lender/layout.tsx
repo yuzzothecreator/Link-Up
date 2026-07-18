@@ -2,7 +2,8 @@ import Link from "next/link"
 import { requireInstitutionMember } from "@/lib/auth/guards"
 import { logoutAction } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
-import { Landmark, LayoutDashboard, FileSearch, LogOut } from "lucide-react"
+import { LayoutDashboard, FileSearch, LogOut } from "lucide-react"
+import { LinkUpMark } from "@/components/brand/link-up-mark"
 
 export default async function LenderLayout({ children }: { children: React.ReactNode }) {
   const { membership } = await requireInstitutionMember()
@@ -13,7 +14,7 @@ export default async function LenderLayout({ children }: { children: React.React
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <Link href="/lender" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Landmark className="h-5 w-5" />
+              <LinkUpMark className="h-5 w-5" />
             </div>
             <div>
               <p className="font-semibold">Link-Up Provider Portal</p>

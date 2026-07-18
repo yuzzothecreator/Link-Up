@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ShieldCheck, LayoutDashboard, Users, Landmark, FileCheck, LogOut, ChevronRight } from "lucide-react"
+import { LayoutDashboard, Users, Landmark, FileCheck, LogOut, ChevronRight } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { logoutAction } from "@/lib/actions/auth"
+import { LinkUpMark } from "@/components/brand/link-up-mark"
 
 const adminNav = [
   { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -40,12 +41,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link href="/admin">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
-                    <ShieldCheck className="h-4 w-4" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                    <LinkUpMark className="h-4 w-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Link-Up</span>
-                    <span className="truncate text-xs text-indigo-600 font-medium">Admin Panel</span>
+                    <span className="truncate text-xs text-muted-foreground font-medium">Admin Panel</span>
                   </div>
                 </Link>
               </SidebarMenuButton>

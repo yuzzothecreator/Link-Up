@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  ShieldCheck,
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
@@ -12,12 +11,9 @@ import {
   Users,
   User,
   LogOut,
-  Settings,
-  FileCheck,
   ChevronRight,
   Bell,
   Briefcase,
-  FileText,
   PieChart,
   Shield,
 } from "lucide-react"
@@ -40,6 +36,7 @@ import { Separator } from "@/components/ui/separator"
 import { logoutAction } from "@/lib/actions/auth"
 import { PhoneVerificationBanner } from "./phone-verification-banner"
 import { VerificationStatusBanner } from "./verification-status-banner"
+import { LinkUpMark } from "@/components/brand/link-up-mark"
 
 const mainNav = [
   { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -83,7 +80,7 @@ export function DashboardLayout({
               <SidebarMenuButton size="lg" asChild>
                 <Link href="/dashboard">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <ShieldCheck className="h-4 w-4" />
+                    <LinkUpMark className="h-4 w-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Link-Up</span>

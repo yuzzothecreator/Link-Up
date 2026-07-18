@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { ShieldCheck, CheckCircle2 } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
+import { LinkUpLogo } from "@/components/brand/link-up-mark"
 
 const steps = [
   { id: "kyc", label: "Personal Info", href: "/onboarding/kyc" },
@@ -21,11 +22,8 @@ export function OnboardingShell({
     <main className="flex min-h-screen flex-col bg-secondary/40">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border bg-background px-4 py-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">Link-Up</span>
+        <Link href="/">
+          <LinkUpLogo />
         </Link>
         <span className="text-sm text-muted-foreground">
           Step {currentIndex + 1} of {steps.length}
