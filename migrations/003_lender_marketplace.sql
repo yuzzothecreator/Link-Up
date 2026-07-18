@@ -193,7 +193,7 @@ INSERT INTO public.loan_products (
   min_term_days, max_term_days, base_interest_rate, required_trust_score
 )
 SELECT id, 'SME Working Capital', 'Short-term working capital for verified small businesses.',
-       50000, 5000000, 30, 365, 12, 350
+       50000, 5000000, 30, 365, 12, 200
 FROM public.provider_organizations WHERE name = 'Link-Up Partner Bank'
 ON CONFLICT (organization_id, name) DO NOTHING;
 
@@ -202,7 +202,7 @@ INSERT INTO public.loan_products (
   min_term_days, max_term_days, base_interest_rate, required_trust_score
 )
 SELECT id, 'Mobile Business Advance', 'Fast mobile-money based business advance.',
-       10000, 1000000, 7, 90, 15, 250
+       10000, 1000000, 7, 90, 15, 200
 FROM public.provider_organizations WHERE name = 'Link-Up Mobile Finance'
 ON CONFLICT (organization_id, name) DO NOTHING;
 
