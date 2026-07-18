@@ -1,0 +1,71 @@
+import { z } from "zod"
+
+/**
+ * Normalize Tanzanian-style phone numbers to E.164 (+255...).
+ * Accepts: 0712345678, 712345678, 255712345678, +255712345678
+ */
+export function normalizePhone(input: string): string | null {
+  const digits = input.replace(/[^\d+]/g, "")
+  let n = digits.replace(/^\+/, "")
+  if (n.startsWith("0")) n = "255" + n.slice(1)
+  if (n.length === 9) n = "255" + n
+  if (!/^255\d{9}$/.test(n)) return null
+  return "+" + n
+}
+
+const phoneSchema = z
+  .string()
+  .min(7, "Phone number is too short")
+  .transform((v, ctx) => {
+    const normalized = normalizePhone(v)
+    if (!normalized) {
+      ctx.addIssue({ code: "custom", message: "Enter a valid phone number" })
+      return z.NEVER
+    }
+    return normalized
+  })
+
+export const registerSchema = z.object({
+  fullName: z.string().min(2, "Enter your full name").max(120),
+  phone: phoneSchema,
+})
+
+export const loginSchema = z.object({
+  phone: phoneSchema,
+})
+
+export const verifyOtpSchema = z.object({
+  phone: phoneSchema,
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
+})
+
+export const businessProfileSchema = z.object({
+  businessType: z.string().min(2, "Select a business type"),
+  location: z.string().min(2, "Enter your location"),
+  dailyIncome: z.coerce.number().min(0, "Enter a valid amount"),
+})
+
+export const financialSchema = z.object({
+  mobileMoneyProvider: z.string().min(2, "Select a provider"),
+  bankAccount: z.string().optional(),
+})
+
+export const loanApplicationSchema = z.object({
+  amount: z.coerce.number().min(5000, "Minimum loan is TZS 5,000").max(5_000_000),
+  termDays: z.coerce.number().int().min(7).max(365),
+  purpose: z.string().min(3, "Describe the purpose").max(300),
+  groupId: z.string().uuid().optional().or(z.literal("")),
+})
+
+export const depositSchema = z.object({
+  amount: z.coerce.number().min(1000, "Minimum deposit is TZS 1,000").max(10_000_000),
+})
+
+export const createGroupSchema = z.object({
+  name: z.string().min(2, "Enter a group name").max(120),
+})
+
+export const addMemberSchema = z.object({
+  groupId: z.string().uuid(),
+  phone: phoneSchema,
+})
